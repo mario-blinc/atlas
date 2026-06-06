@@ -1,0 +1,56 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #0e0e18;
+  --bg-panel: rgba(10, 15, 35, 0.85);
+  --bg-card: rgba(14, 20, 45, 0.7);
+  --accent-blue: #00b4ff;
+  --accent-cyan: #00f5ff;
+  --accent-glow: rgba(0, 180, 255, 0.15);
+  --accent-glow-strong: rgba(0, 180, 255, 0.35);
+  --border-blue: rgba(0, 180, 255, 0.25);
+  --border-blue-strong: rgba(0, 180, 255, 0.5);
+  --text-primary: #e8f4ff;
+  --text-secondary: rgba(180, 210, 240, 0.7);
+  --text-dim: rgba(120, 160, 200, 0.45);
+  --red-glow: rgba(255, 60, 60, 0.2);
+  --red-accent: #ff4444;
+  --green-accent: #00ff88;
+  --font-display: 'Orbitron', monospace;
+  --font-mono: 'Space Mono', monospace;
+  --font-body: 'Inter', sans-serif;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-blue-strong);
+  border-radius: 2px;
+}
+
+::selection {
+  background: rgba(0, 180, 255, 0.3);
+}

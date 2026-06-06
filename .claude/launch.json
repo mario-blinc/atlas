@@ -1,0 +1,13 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "atlas-client",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["start"],
+      "cwd": "/Users/marioandreas/atlas-dashboard/client",
+      "port": 3000,
+      "env": { "BROWSER": "none" }
+    }
+  ]
+}
