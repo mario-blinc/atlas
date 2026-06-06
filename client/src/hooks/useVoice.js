@@ -50,35 +50,115 @@ export function useVoiceInput(onTranscript) {
   return { isListening, transcript, supported, startListening, stopListening };
 }
 
+const VOICE_STORAGE_KEY = 'atlas_voice_settings';
+
+function loadVoiceSettings() {
+  try {
+    return JSON.parse(localStorage.getItem(VOICE_STORAGE_KEY)) || {};
+  } catch { return {}; }
+}
+
+function saveVoiceSettings(settings) {
+  localStorage.setItem(VOICE_STORAGE_KEY, JSON.stringify(settings));
+}
+
 export function useVoiceOutput() {
-  const [muted, setMuted] = useState(false);
+  const saved = loadVoiceSettings();
+  const [muted, setMutedState] = useState(saved.muted ?? false);
   const [speaking, setSpeaking] = useState(false);
+  const [availableVoices, setAvailableVoices] = useState([]);
+  const [selectedVoiceName, setSelectedVoiceNameState] = useState(saved.voiceName ?? '');
+  const [rate, setRateState] = useState(saved.rate ?? 0.92);
+  const [pitch, setPitchState] = useState(saved.pitch ?? 0.85);
+
+  useEffect(() => {
+    const loadVoices = () => {
+      const voices = window.speechSynthesis?.getVoices() || [];
+      // Filter to English voices only, deduplicate by name
+      const english = voices.filter(v => v.lang.startsWith('en'));
+      setAvailableVoices(english);
+    };
+    loadVoices();
+    window.speechSynthesis?.addEventListener('voiceschanged', loadVoices);
+    return () => window.speechSynthesis?.removeEventListener('voiceschanged', loadVoices);
+  }, []);
+
+  const setMuted = useCallback((v) => {
+    setMutedState(v);
+    saveVoiceSettings({ ...loadVoiceSettings(), muted: v });
+  }, []);
+
+  const setSelectedVoiceName = useCallback((name) => {
+    setSelectedVoiceNameState(name);
+    saveVoiceSettings({ ...loadVoiceSettings(), voiceName: name });
+  }, []);
+
+  const setRate = useCallback((v) => {
+    setRateState(v);
+    saveVoiceSettings({ ...loadVoiceSettings(), rate: v });
+  }, []);
+
+  const setPitch = useCallback((v) => {
+    setPitchState(v);
+    saveVoiceSettings({ ...loadVoiceSettings(), pitch: v });
+  }, []);
 
   const speak = useCallback((text) => {
     if (muted || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.92;
-    utterance.pitch = 0.85;
-    utterance.volume = 0.9;
+    utterance.rate = rate;
+    utterance.pitch = pitch;
+    utterance.volume = 0.95;
 
     const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(v =>
-      v.name.includes('Daniel') || v.name.includes('Google UK English Male') ||
-      v.name.includes('Alex') || (v.lang === 'en-GB' && !v.name.includes('Female'))
-    );
-    if (preferred) utterance.voice = preferred;
+
+    if (selectedVoiceName) {
+      const picked = voices.find(v => v.name === selectedVoiceName);
+      if (picked) utterance.voice = picked;
+    } else {
+      // Smart default: prefer a calm male English voice
+      const preferred = voices.find(v =>
+        v.name === 'Daniel' ||
+        v.name === 'Google UK English Male' ||
+        v.name === 'Alex' ||
+        v.name === 'Oliver'
+      ) || voices.find(v => v.lang === 'en-GB') || voices.find(v => v.lang.startsWith('en'));
+      if (preferred) utterance.voice = preferred;
+    }
 
     utterance.onstart = () => setSpeaking(true);
     utterance.onend = () => setSpeaking(false);
     utterance.onerror = () => setSpeaking(false);
     window.speechSynthesis.speak(utterance);
-  }, [muted]);
+  }, [muted, selectedVoiceName, rate, pitch]);
 
   const cancel = useCallback(() => {
     window.speechSynthesis?.cancel();
     setSpeaking(false);
   }, []);
 
-  return { muted, setMuted, speaking, speak, cancel };
+  const previewVoice = useCallback((voiceName) => {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance("Systems are live. Good to have you back, Mario.");
+    utterance.rate = rate;
+    utterance.pitch = pitch;
+    utterance.volume = 0.95;
+    const voices = window.speechSynthesis.getVoices();
+    const voice = voices.find(v => v.name === voiceName);
+    if (voice) utterance.voice = voice;
+    window.speechSynthesis.speak(utterance);
+  }, [rate, pitch]);
+
+  return {
+    muted, setMuted,
+    speaking,
+    speak, cancel,
+    availableVoices,
+    selectedVoiceName, setSelectedVoiceName,
+    rate, setRate,
+    pitch, setPitch,
+    previewVoice,
+  };
 }

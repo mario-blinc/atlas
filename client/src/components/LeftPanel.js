@@ -37,7 +37,9 @@ function StatusDot({ active, color = 'var(--accent-blue)' }) {
   );
 }
 
-export default function LeftPanel({ apiOnline, voiceActive, sessionLive }) {
+export default function LeftPanel({ apiOnline, voiceActive, sessionLive, voiceOutput }) {
+  const { availableVoices, selectedVoiceName, setSelectedVoiceName, rate, setRate, pitch, setPitch, previewVoice, muted, setMuted } = voiceOutput || {};
+  const [voiceOpen, setVoiceOpen] = useState(false);
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -167,6 +169,108 @@ export default function LeftPanel({ apiOnline, voiceActive, sessionLive }) {
       </div>
 
       <div style={{ flex: 1 }} />
+
+      {/* Voice Settings */}
+      {availableVoices && (
+        <div>
+          <button
+            onClick={() => setVoiceOpen(v => !v)}
+            style={{
+              width: '100%',
+              background: voiceOpen ? 'rgba(0,180,255,0.1)' : 'transparent',
+              border: '1px solid var(--border-blue)',
+              borderRadius: 6,
+              padding: '7px 10px',
+              color: 'var(--text-secondary)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 9,
+              letterSpacing: '0.15em',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: voiceOpen ? 10 : 0,
+              transition: 'all 0.2s',
+            }}
+          >
+            <span>VOICE SETTINGS</span>
+            <span style={{ opacity: 0.5 }}>{voiceOpen ? '▲' : '▼'}</span>
+          </button>
+
+          {voiceOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
+            >
+              {/* Voice selector */}
+              <div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dim)', letterSpacing: '0.1em', marginBottom: 5 }}>VOICE</div>
+                <select
+                  value={selectedVoiceName}
+                  onChange={e => setSelectedVoiceName(e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-blue)',
+                    borderRadius: 4,
+                    color: 'var(--text-primary)',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 9,
+                    padding: '5px 6px',
+                    cursor: 'pointer',
+                    outline: 'none',
+                  }}
+                >
+                  <option value="">Auto (default)</option>
+                  {availableVoices.map(v => (
+                    <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => previewVoice(selectedVoiceName || (availableVoices[0]?.name))}
+                  style={{
+                    marginTop: 5, width: '100%',
+                    background: 'transparent',
+                    border: '1px solid var(--border-blue)',
+                    borderRadius: 4,
+                    color: 'var(--accent-blue)',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 8,
+                    letterSpacing: '0.1em',
+                    padding: '4px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ▶ PREVIEW VOICE
+                </button>
+              </div>
+
+              {/* Rate */}
+              <div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dim)', letterSpacing: '0.1em', marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
+                  <span>SPEED</span><span style={{ color: 'var(--accent-blue)' }}>{rate.toFixed(2)}x</span>
+                </div>
+                <input type="range" min="0.5" max="1.5" step="0.05" value={rate}
+                  onChange={e => setRate(parseFloat(e.target.value))}
+                  style={{ width: '100%', accentColor: 'var(--accent-blue)' }}
+                />
+              </div>
+
+              {/* Pitch */}
+              <div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dim)', letterSpacing: '0.1em', marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
+                  <span>PITCH</span><span style={{ color: 'var(--accent-blue)' }}>{pitch.toFixed(2)}</span>
+                </div>
+                <input type="range" min="0.5" max="1.5" step="0.05" value={pitch}
+                  onChange={e => setPitch(parseFloat(e.target.value))}
+                  style={{ width: '100%', accentColor: 'var(--accent-blue)' }}
+                />
+              </div>
+            </motion.div>
+          )}
+        </div>
+      )}
 
       {/* Version tag */}
       <div style={{
