@@ -2,14 +2,23 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import Anthropic from '@anthropic-ai/sdk';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config({ path: '../.env' });
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3001;
+const isProd = process.env.NODE_ENV === 'production';
 
-app.use(cors({ origin: 'http://localhost:3000' }));
+app.use(cors({ origin: isProd ? '*' : 'http://localhost:3000' }));
 app.use(express.json());
+
+// Serve React build in production
+if (isProd) {
+  app.use(express.static(path.join(__dirname, '../client/build')));
+}
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -110,6 +119,13 @@ function getMockProjects() {
       conversation_count: 3,
     },
   ];
+}
+
+// Catch-all: serve React app in production
+if (isProd) {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/build/index.html'));
+  });
 }
 
 app.listen(PORT, () => {
