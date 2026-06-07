@@ -490,14 +490,6 @@ export default function BentoDashboard({ data, loading }) {
   );
 }
 
-function CardLabel({ children }) {
-  return (
-    <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: '0.04em', marginBottom: 10, flexShrink: 0, width: '100%' }}>
-      {children}
-    </div>
-  );
-}
-
 function WeatherMini({ loading }) {
   const [w, setW] = useState(null);
   useEffect(() => {
