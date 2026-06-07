@@ -6,6 +6,7 @@ import AtlasChat from './components/AtlasChat';
 export default function App() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activeNav, setActiveNav] = useState('Dashboard');
 
   const fetchData = async () => {
     setLoading(true);
@@ -19,41 +20,27 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
-    fetchData();
-    const t = setInterval(fetchData, 5 * 60 * 1000);
-    return () => clearInterval(t);
-  }, []);
+  useEffect(() => { fetchData(); const t = setInterval(fetchData, 5 * 60 * 1000); return () => clearInterval(t); }, []);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
 
   return (
-    <div style={{
-      width: '100vw', height: '100vh',
-      display: 'flex', overflow: 'hidden',
-      background: 'var(--bg)',
-      position: 'relative',
-    }}>
-      {/* Ambient background glows */}
-      <div style={{
-        position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
-        background: `
-          radial-gradient(ellipse 60% 50% at 15% 50%, rgba(40,70,180,0.18) 0%, transparent 60%),
-          radial-gradient(ellipse 40% 40% at 85% 20%, rgba(60,40,160,0.15) 0%, transparent 55%),
-          radial-gradient(ellipse 50% 60% at 70% 85%, rgba(20,60,160,0.12) 0%, transparent 60%)
-        `,
-      }} />
+    <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg)' }}>
+      {/* Top nav bar */}
+      <TopBar activeNav={activeNav} setActiveNav={setActiveNav} onRefresh={fetchData} loading={loading} />
 
-      {/* Left sidebar */}
-      <Sidebar />
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
+        {/* Left sidebar */}
+        <Sidebar />
 
-      {/* Main content */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', zIndex: 1 }}>
-        {/* Header */}
-        <Header greeting={greeting} onRefresh={fetchData} loading={loading} data={data} />
-        {/* Dashboard grid */}
-        <BentoDashboard data={data} loading={loading} />
+        {/* Main area */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+          {/* Greeting */}
+          <GreetingBar greeting={greeting} data={data} loading={loading} />
+          {/* Dashboard */}
+          <BentoDashboard data={data} loading={loading} />
+        </div>
       </div>
 
       <AtlasChat dashboardData={data} />
@@ -61,169 +48,174 @@ export default function App() {
   );
 }
 
+function TopBar({ activeNav, setActiveNav, onRefresh, loading }) {
+  const navItems = ['Dashboard', 'Calendar', 'Tasks', 'Inbox', 'Settings'];
+  return (
+    <div style={{
+      height: 52, flexShrink: 0,
+      display: 'flex', alignItems: 'center', gap: 0,
+      borderBottom: '1px solid var(--border)',
+      background: 'var(--bg-sidebar)',
+      paddingLeft: 0,
+    }}>
+      {/* Logo area */}
+      <div style={{
+        width: 200, flexShrink: 0, height: '100%',
+        display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 16,
+        borderRight: '1px solid var(--border)',
+      }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: 8,
+          background: 'linear-gradient(135deg, #00c9ff 0%, #4d7ef7 100%)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          boxShadow: '0 0 16px rgba(0,201,255,0.35)',
+        }}>
+          <span style={{ fontSize: 13, color: 'white', fontWeight: 700 }}>◈</span>
+        </div>
+        <span style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 700, letterSpacing: '0.2em', color: 'white' }}>ATLAS</span>
+      </div>
+
+      {/* Nav tabs */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: 8, gap: 2 }}>
+        {navItems.map(item => (
+          <button key={item} onClick={() => setActiveNav(item)} style={{
+            padding: '6px 14px', background: 'transparent', border: 'none',
+            color: activeNav === item ? 'var(--teal)' : 'var(--text-secondary)',
+            fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: activeNav === item ? 600 : 400,
+            cursor: 'pointer', borderRadius: 6, transition: 'all 0.15s',
+            borderBottom: activeNav === item ? '2px solid var(--teal)' : '2px solid transparent',
+          }}
+            onMouseEnter={e => { if (activeNav !== item) e.currentTarget.style.color = 'var(--text-primary)'; }}
+            onMouseLeave={e => { if (activeNav !== item) e.currentTarget.style.color = 'var(--text-secondary)'; }}
+          >
+            {item}
+          </button>
+        ))}
+      </div>
+
+      {/* Right side */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingRight: 16 }}>
+        <button onClick={onRefresh} style={{
+          width: 32, height: 32, borderRadius: 8,
+          background: 'transparent', border: '1px solid var(--border)',
+          color: 'var(--text-secondary)', fontSize: 14, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transition: 'all 0.15s',
+        }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--teal)'; e.currentTarget.style.color = 'var(--teal)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+        >{loading ? '…' : '↻'}</button>
+
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+          background: 'var(--bg-card)', border: '1px solid var(--border)',
+          borderRadius: 8, padding: '4px 10px 4px 6px',
+        }}>
+          <div style={{
+            width: 26, height: 26, borderRadius: '50%',
+            background: 'linear-gradient(135deg, #00c9ff, #4d7ef7)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 11, fontWeight: 700, color: 'white', flexShrink: 0,
+          }}>M</div>
+          <div>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: 'white', lineHeight: 1.2 }}>Mario A.</div>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-secondary)' }}>mario@blincstudio.co.uk</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Sidebar() {
   const [active, setActive] = useState(0);
-  const icons = [
-    { icon: '◈', label: 'Dashboard' },
+  const items = [
+    { icon: '⊞', label: 'Overview' },
     { icon: '◷', label: 'Calendar' },
-    { icon: '✉', label: 'Inbox' },
     { icon: '◻', label: 'Tasks' },
+    { icon: '✉', label: 'Inbox' },
     { icon: '◎', label: 'Projects' },
+    { icon: '⚙', label: 'Settings' },
   ];
   return (
     <motion.div
-      initial={{ x: -60, opacity: 0 }}
+      initial={{ x: -30, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.4 }}
       style={{
-        width: 60, flexShrink: 0,
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        padding: '20px 0',
+        width: 200, flexShrink: 0,
+        display: 'flex', flexDirection: 'column',
         borderRight: '1px solid var(--border)',
         background: 'var(--bg-sidebar)',
-        backdropFilter: 'blur(20px)',
-        position: 'relative', zIndex: 2,
-        gap: 6,
+        padding: '16px 10px',
+        gap: 2,
+        overflowY: 'auto',
       }}
     >
-      {/* Logo mark */}
-      <div style={{
-        width: 32, height: 32, borderRadius: 8,
-        background: 'linear-gradient(135deg, #4d7ef7, #7b5df7)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        marginBottom: 16, flexShrink: 0,
-        boxShadow: '0 0 20px rgba(77,126,247,0.4)',
-      }}>
-        <span style={{ fontSize: 14, color: 'white' }}>◈</span>
-      </div>
-
-      {icons.map((item, i) => (
-        <button key={i} onClick={() => setActive(i)} title={item.label} style={{
-          width: 40, height: 40, borderRadius: 10,
-          background: active === i ? 'rgba(77,126,247,0.2)' : 'transparent',
-          border: active === i ? '1px solid rgba(77,126,247,0.4)' : '1px solid transparent',
-          color: active === i ? 'var(--blue-bright)' : 'var(--text-dim)',
-          fontSize: 16, cursor: 'pointer', transition: 'all 0.2s',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+      {items.map((item, i) => (
+        <button key={i} onClick={() => setActive(i)} style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '9px 12px', borderRadius: 8, border: 'none',
+          background: active === i ? 'rgba(0,201,255,0.08)' : 'transparent',
+          color: active === i ? 'var(--teal)' : 'var(--text-secondary)',
+          fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: active === i ? 500 : 400,
+          cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left',
+          borderLeft: active === i ? '2px solid var(--teal)' : '2px solid transparent',
         }}
-          onMouseEnter={e => { if (active !== i) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
-          onMouseLeave={e => { if (active !== i) e.currentTarget.style.background = 'transparent'; }}
+          onMouseEnter={e => { if (active !== i) { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'var(--text-primary)'; } }}
+          onMouseLeave={e => { if (active !== i) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; } }}
         >
-          {item.icon}
+          <span style={{ fontSize: 15, width: 18, textAlign: 'center', flexShrink: 0 }}>{item.icon}</span>
+          <span>{item.label}</span>
         </button>
       ))}
 
       <div style={{ flex: 1 }} />
-
-      {/* User avatar */}
-      <div style={{
-        width: 34, height: 34, borderRadius: '50%',
-        background: 'linear-gradient(135deg, #4d7ef7 0%, #7b5df7 100%)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, color: 'white',
-        border: '2px solid rgba(77,126,247,0.4)',
-        boxShadow: '0 0 12px rgba(77,126,247,0.3)',
-      }}>
-        M
+      <div style={{ padding: '10px 12px', borderTop: '1px solid var(--border)', marginTop: 8 }}>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--text-dim)', letterSpacing: '0.15em' }}>ATLAS v2.0</div>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--text-dim)', marginTop: 2 }}>BLINC STUDIO</div>
       </div>
     </motion.div>
   );
 }
 
-function Header({ greeting, onRefresh, loading, data }) {
-  const [now, setNow] = useState(new Date());
-  useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
-
+function GreetingBar({ greeting, data, loading }) {
   const stats = data?.stats || {};
   const threads = data?.threads || [];
-
   return (
     <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.1 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.2 }}
       style={{
-        padding: '18px 24px 14px',
+        padding: '14px 20px 12px',
         borderBottom: '1px solid var(--border)',
-        background: 'rgba(8,12,26,0.8)',
-        backdropFilter: 'blur(30px)',
+        background: 'var(--bg)',
         flexShrink: 0,
-        position: 'relative', zIndex: 1,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <div>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 2 }}>
-            {greeting},
-          </div>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 26, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
-            Mario Andreas
-          </div>
+      <div>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 2 }}>{greeting},</div>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 22, fontWeight: 700, color: 'white', letterSpacing: '-0.01em', lineHeight: 1 }}>
+          Mario Andreas
         </div>
+      </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* Quick stats chips */}
-          <div style={{ display: 'flex', gap: 8 }}>
-            {[
-              { v: stats.meetingCount ?? (data?.events?.length ?? 0), label: 'meetings', color: 'var(--blue)' },
-              { v: stats.unreadCount ?? threads.length, label: 'unread', color: 'var(--cyan)' },
-              { v: stats.taskCount ?? (data?.tasks?.length ?? 0), label: 'tasks', color: '#c05050' },
-            ].map(({ v, label, color }) => (
-              <div key={label} style={{
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border)',
-                borderRadius: 8, padding: '5px 10px',
-                display: 'flex', alignItems: 'center', gap: 6,
-                backdropFilter: 'blur(10px)',
-              }}>
-                <span style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 700, color }}>{loading ? '—' : v}</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--text-dim)', letterSpacing: '0.1em' }}>{label.toUpperCase()}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Clock */}
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-primary)', letterSpacing: '0.05em' }}>
-              {now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-            </div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dim)' }}>
-              {now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase()}
-            </div>
-          </div>
-
-          {/* Refresh */}
-          <button onClick={onRefresh} style={{
-            width: 34, height: 34, borderRadius: 8,
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        {[
+          { val: loading ? '—' : (data?.events?.length ?? 0), label: 'Meetings', color: 'var(--teal)' },
+          { val: loading ? '—' : (stats.unreadCount ?? threads.length), label: 'Unread', color: 'var(--orange)' },
+          { val: loading ? '—' : (data?.tasks?.length ?? 0), label: 'Tasks', color: 'var(--red)' },
+        ].map(({ val, label, color }) => (
+          <div key={label} style={{
             background: 'var(--bg-card)', border: '1px solid var(--border)',
-            color: 'var(--text-dim)', fontSize: 14, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'all 0.2s',
-          }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-bright)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-dim)'; }}
-          >
-            {loading ? '…' : '↻'}
-          </button>
-
-          {/* Avatar */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            background: 'var(--bg-card)', border: '1px solid var(--border)',
-            borderRadius: 10, padding: '5px 10px 5px 5px',
+            borderRadius: 8, padding: '7px 14px', textAlign: 'center',
           }}>
-            <div style={{
-              width: 26, height: 26, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #4d7ef7, #7b5df7)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, fontWeight: 700, color: 'white',
-            }}>M</div>
-            <div>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2 }}>Mario</div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--text-dim)' }}>Blinc Studio</div>
-            </div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color, lineHeight: 1 }}>{val}</div>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-secondary)', marginTop: 3 }}>{label}</div>
           </div>
-        </div>
+        ))}
       </div>
     </motion.div>
   );
