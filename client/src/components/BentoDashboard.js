@@ -441,10 +441,10 @@ export default function BentoDashboard({ data, loading }) {
 
   return (
     <div style={{
-      flex: 1, minHeight: 0,
+      position: 'absolute', inset: 0,
       display: 'grid',
       gridTemplateColumns: '220px 1fr 1fr 220px',
-      gridTemplateRows: '1fr 1fr',
+      gridTemplateRows: 'calc(50% - 5px) calc(50% - 5px)',
       gap: 10, padding: '10px 12px 12px',
       overflow: 'hidden',
     }}>

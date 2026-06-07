@@ -61,9 +61,11 @@ export default function App() {
   const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
 
   return (
-    <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg)' }}>
+    <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg)', position: 'fixed', inset: 0 }}>
       <TopBar onRefresh={fetchData} loading={loading} greeting={greeting} />
-      <BentoDashboard data={data} loading={loading} />
+      <div style={{ flex: 1, overflow: 'hidden', minHeight: 0, position: 'relative' }}>
+        <BentoDashboard data={data} loading={loading} />
+      </div>
     </div>
   );
 }
