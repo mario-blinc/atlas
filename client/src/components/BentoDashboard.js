@@ -1,65 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import WeatherCard from './WeatherCard';
+import AtlasOrb from './AtlasOrb';
 
-function Card({ children, style = {}, delay = 0 }) {
+// ─── Card ─────────────────────────────────────────────────────────────────────
+function Card({ children, style = {}, delay = 0, glow }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, scale: 0.97 }}
+      animate={{ opacity: 1, scale: 1 }}
       transition={{ delay, duration: 0.35 }}
       style={{
         background: 'var(--bg-card)',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--radius)',
-        padding: '16px 18px',
+        border: `1px solid ${glow ? 'rgba(0,201,255,0.2)' : 'var(--border)'}`,
+        borderRadius: 16,
+        padding: '18px 20px',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
+        boxShadow: glow ? '0 0 30px rgba(0,201,255,0.06)' : 'none',
         ...style,
       }}
     />
   );
 }
 
-function SectionLabel({ children, color, action }) {
+function CardLabel({ children }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexShrink: 0 }}>
-      <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: color || 'var(--text-secondary)', letterSpacing: '0.02em' }}>
-        {children}
-      </span>
-      {action && <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--teal)', cursor: 'pointer' }}>{action}</span>}
+    <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: '0.04em', marginBottom: 10, flexShrink: 0 }}>
+      {children}
     </div>
   );
 }
 
-function StatBlock({ label, value, sub, color = 'var(--teal)', size = 32 }) {
+function BigStat({ value, label, color = 'var(--text-primary)', size = 52 }) {
   return (
-    <div>
-      <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>{label}</div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-        <span style={{ fontFamily: 'var(--font-display)', fontSize: size, fontWeight: 700, color, lineHeight: 1, letterSpacing: '-0.02em' }}>{value}</span>
-        {sub && <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-secondary)' }}>{sub}</span>}
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: size, fontWeight: 700, color, lineHeight: 1, letterSpacing: '-0.02em' }}>
+        {value}
       </div>
-    </div>
-  );
-}
-
-function ProgressRow({ label, value, max = 100, color = 'var(--teal)' }) {
-  const pct = Math.min((value / max) * 100, 100);
-  return (
-    <div style={{ marginBottom: 10 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-        <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-secondary)' }}>{label}</span>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-primary)', fontWeight: 700 }}>{value}</span>
-      </div>
-      <div style={{ height: 5, background: 'var(--border)', borderRadius: 3 }}>
-        <motion.div
-          initial={{ width: 0 }} animate={{ width: `${pct}%` }}
-          transition={{ duration: 0.7, delay: 0.4 }}
-          style={{ height: '100%', background: color, borderRadius: 3, boxShadow: `0 0 8px ${color}80` }}
-        />
-      </div>
+      <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-secondary)', marginTop: 6 }}>{label}</div>
     </div>
   );
 }
@@ -67,85 +46,389 @@ function ProgressRow({ label, value, max = 100, color = 'var(--teal)' }) {
 function Skel({ w = '60%', h = 20 }) {
   return (
     <motion.div animate={{ opacity: [0.1, 0.3, 0.1] }} transition={{ duration: 1.5, repeat: Infinity }}
-      style={{ height: h, width: w, background: 'var(--border-bright)', borderRadius: 4, marginBottom: 8 }} />
+      style={{ height: h, width: w, background: 'var(--border-bright)', borderRadius: 6, marginBottom: 8 }} />
   );
 }
 
-function TaskRow({ task }) {
-  const overdue = task.due_date && new Date(task.due_date) < new Date();
-  const days = task.due_date ? Math.floor((Date.now() - new Date(task.due_date)) / 86400000) : 0;
+// ─── Voice picker ─────────────────────────────────────────────────────────────
+function VoicePicker({ onClose }) {
+  const [voices, setVoices] = useState([]);
+  const [selected, setSelected] = useState(localStorage.getItem('atlas_voice') || '');
+  const [rate, setRate] = useState(parseFloat(localStorage.getItem('atlas_rate') || '0.92'));
+  const [pitch, setPitch] = useState(parseFloat(localStorage.getItem('atlas_pitch') || '0.85'));
+
+  useEffect(() => {
+    const load = () => setVoices(window.speechSynthesis?.getVoices().filter(v => v.lang.startsWith('en')) || []);
+    load();
+    window.speechSynthesis?.addEventListener('voiceschanged', load);
+    return () => window.speechSynthesis?.removeEventListener('voiceschanged', load);
+  }, []);
+
+  const preview = (name) => {
+    window.speechSynthesis?.cancel();
+    const u = new SpeechSynthesisUtterance("Systems live. Good to have you back, Mario.");
+    u.rate = rate; u.pitch = pitch;
+    const v = window.speechSynthesis?.getVoices().find(x => x.name === name);
+    if (v) u.voice = v;
+    window.speechSynthesis?.speak(u);
+  };
+
+  const save = () => {
+    localStorage.setItem('atlas_voice', selected);
+    localStorage.setItem('atlas_rate', rate);
+    localStorage.setItem('atlas_pitch', pitch);
+    onClose();
+  };
+
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-      <div style={{
-        width: 18, height: 18, borderRadius: 4, border: `1.5px solid ${overdue ? 'var(--red)' : 'var(--border-bright)'}`,
-        flexShrink: 0, marginTop: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: overdue ? 'var(--red-dim)' : 'transparent',
-      }}>
-        {overdue && <span style={{ fontSize: 9, color: 'var(--red)' }}>!</span>}
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      style={{
+        position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
+        marginBottom: 10, width: 280,
+        background: '#1a1d28', border: '1px solid var(--border-bright)',
+        borderRadius: 12, padding: 16, zIndex: 50,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+      }}
+    >
+      <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: 'white', marginBottom: 12 }}>Voice Settings</div>
+
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 6 }}>Voice</div>
+        <select value={selected} onChange={e => setSelected(e.target.value)} style={{
+          width: '100%', background: 'var(--bg)', border: '1px solid var(--border-bright)',
+          borderRadius: 6, color: 'white', fontFamily: 'var(--font-body)', fontSize: 12, padding: '6px 8px', outline: 'none',
+        }}>
+          <option value="">Auto (Daniel / UK Male)</option>
+          {voices.map(v => <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>)}
+        </select>
+        <button onClick={() => preview(selected)} style={{
+          marginTop: 6, width: '100%', padding: '5px', borderRadius: 6,
+          background: 'transparent', border: '1px solid var(--border-bright)',
+          color: 'var(--teal)', fontFamily: 'var(--font-body)', fontSize: 11, cursor: 'pointer',
+        }}>▶ Preview voice</button>
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.content}</div>
-        {task.due_date && <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: overdue ? 'var(--red)' : 'var(--text-secondary)', marginTop: 2 }}>{overdue ? `${days} day${days !== 1 ? 's' : ''} overdue` : 'Due today'}</div>}
+
+      {[
+        { label: 'Speed', value: rate, set: setRate, min: 0.5, max: 1.5, step: 0.05 },
+        { label: 'Pitch', value: pitch, set: setPitch, min: 0.5, max: 1.5, step: 0.05 },
+      ].map(({ label, value, set, min, max, step }) => (
+        <div key={label} style={{ marginBottom: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-secondary)' }}>{label}</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--teal)' }}>{value.toFixed(2)}</span>
+          </div>
+          <input type="range" min={min} max={max} step={step} value={value}
+            onChange={e => set(parseFloat(e.target.value))}
+            style={{ width: '100%', accentColor: 'var(--teal)' }} />
+        </div>
+      ))}
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+        <button onClick={onClose} style={{ flex: 1, padding: '7px', borderRadius: 6, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontFamily: 'var(--font-body)', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+        <button onClick={save} style={{ flex: 1, padding: '7px', borderRadius: 6, background: 'var(--teal)', border: 'none', color: 'var(--bg)', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Save</button>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
-function EventRow({ event }) {
+// ─── Orb + Chat centre panel ──────────────────────────────────────────────────
+function CentrePanel({ dashboardData }) {
+  const [messages, setMessages] = useState([{ role: 'assistant', content: 'Systems live. What do you need?' }]);
+  const [input, setInput] = useState('');
+  const [thinking, setThinking] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [showVoice, setShowVoice] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const bottomRef = useRef(null);
+  const inputRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const streamRef = useRef(false);
+
+  // Set up speech recognition
+  useEffect(() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+    const rec = new SR();
+    rec.continuous = false; rec.interimResults = true; rec.lang = 'en-GB';
+    rec.onresult = (e) => {
+      let final = '', interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) final += e.results[i][0].transcript;
+        else interim += e.results[i][0].transcript;
+      }
+      setTranscript(interim || final);
+      if (final) { setInput(final.trim()); setTranscript(''); setListening(false); }
+    };
+    rec.onend = () => setListening(false);
+    recognitionRef.current = rec;
+  }, []);
+
+  // Spacebar to toggle voice
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.code === 'Space' && e.target === document.body) {
+        e.preventDefault();
+        toggleListen();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [listening]);
+
+  const toggleListen = () => {
+    if (!recognitionRef.current) return;
+    if (listening) { recognitionRef.current.stop(); setListening(false); }
+    else { setTranscript(''); recognitionRef.current.start(); setListening(true); }
+  };
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, thinking]);
+
+  const speak = useCallback((text) => {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = parseFloat(localStorage.getItem('atlas_rate') || '0.92');
+    u.pitch = parseFloat(localStorage.getItem('atlas_pitch') || '0.85');
+    const voiceName = localStorage.getItem('atlas_voice');
+    const voices = window.speechSynthesis.getVoices();
+    const voice = voiceName
+      ? voices.find(v => v.name === voiceName)
+      : voices.find(v => v.name === 'Daniel' || v.name === 'Google UK English Male' || v.lang === 'en-GB');
+    if (voice) u.voice = voice;
+    u.onstart = () => setSpeaking(true);
+    u.onend = () => setSpeaking(false);
+    u.onerror = () => setSpeaking(false);
+    window.speechSynthesis.speak(u);
+  }, []);
+
+  const send = useCallback(async (text) => {
+    const msg = (text || input).trim();
+    if (!msg || streamRef.current) return;
+    setInput('');
+    const updated = [...messages, { role: 'user', content: msg }];
+    setMessages(updated);
+    setThinking(true);
+    streamRef.current = true;
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: updated.slice(-12).map(m => ({ role: m.role, content: m.content })),
+          context: { events: dashboardData?.events || [], tasks: dashboardData?.tasks || [], threads: dashboardData?.threads || [] },
+        }),
+      });
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '', fullText = '', first = true;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n'); buf = lines.pop();
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const p = JSON.parse(line.slice(6));
+            if (p.done) break;
+            if (p.text) {
+              if (first) { setThinking(false); setMessages(prev => [...prev, { role: 'assistant', content: p.text, streaming: true }]); first = false; }
+              else setMessages(prev => { const n = [...prev]; n[n.length-1] = { ...n[n.length-1], content: n[n.length-1].content + p.text }; return n; });
+              fullText += p.text;
+            }
+          } catch {}
+        }
+      }
+      setMessages(prev => { const n = [...prev]; if (n[n.length-1]) n[n.length-1] = { ...n[n.length-1], streaming: false }; return n; });
+      if (fullText) speak(fullText.slice(0, 400));
+    } catch {
+      setThinking(false);
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Connection error. Is the server running?' }]);
+    } finally { streamRef.current = false; setThinking(false); }
+  }, [messages, input, dashboardData, speak]);
+
+  const onKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } };
+
+  return (
+    <Card glow delay={0.1} style={{
+      gridColumn: '2 / 4', gridRow: '1 / 3',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: '20px 20px 16px',
+      position: 'relative',
+      background: 'linear-gradient(160deg, #0f1520 0%, #0d1018 100%)',
+    }}>
+      {/* Top label */}
+      <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexShrink: 0 }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.2em', color: 'rgba(0,201,255,0.5)' }}>ATLAS AGENT</div>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', position: 'relative' }}>
+          <button onClick={() => setShowVoice(v => !v)} style={{
+            padding: '4px 10px', borderRadius: 20, border: '1px solid var(--border-bright)',
+            background: 'transparent', color: 'var(--text-secondary)',
+            fontFamily: 'var(--font-body)', fontSize: 11, cursor: 'pointer', transition: 'all 0.15s',
+          }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--teal)'; e.currentTarget.style.color = 'var(--teal)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-bright)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+          >
+            🎤 Change Voice
+          </button>
+          <AnimatePresence>
+            {showVoice && <VoicePicker onClose={() => setShowVoice(false)} />}
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* Orb */}
+      <div style={{ flexShrink: 0, margin: '8px 0 12px' }}>
+        <AtlasOrb speaking={speaking} listening={listening} thinking={thinking} />
+      </div>
+
+      {/* State label */}
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: listening ? '#c080ff' : thinking ? 'var(--blue)' : speaking ? 'var(--teal)' : 'var(--text-dim)', letterSpacing: '0.15em', marginBottom: 10, flexShrink: 0 }}>
+        {listening ? '● LISTENING' : thinking ? '⬡ PROCESSING' : speaking ? '◈ SPEAKING' : '○ READY'}
+      </div>
+
+      {/* Voice transcript */}
+      <AnimatePresence>
+        {listening && transcript && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+            style={{ width: '100%', marginBottom: 8, padding: '6px 10px', background: 'rgba(160,80,255,0.08)', border: '1px solid rgba(160,80,255,0.2)', borderRadius: 8, fontFamily: 'var(--font-body)', fontSize: 12, color: '#c080ff' }}>
+            {transcript}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Messages */}
+      <div style={{ flex: 1, width: '100%', overflowY: 'auto', marginBottom: 10, minHeight: 0 }}>
+        {messages.map((msg, i) => (
+          <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 8 }}>
+            <div style={{
+              maxWidth: '88%', padding: '8px 12px', borderRadius: msg.role === 'user' ? '12px 12px 3px 12px' : '3px 12px 12px 12px',
+              background: msg.role === 'user' ? 'rgba(0,201,255,0.12)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${msg.role === 'user' ? 'rgba(0,201,255,0.2)' : 'var(--border)'}`,
+              fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.6,
+              whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+            }}>
+              {msg.content}
+              {msg.streaming && <span style={{ display: 'inline-block', width: 2, height: '1em', background: 'var(--teal)', marginLeft: 2, verticalAlign: 'text-bottom', animation: 'blink 1s infinite' }} />}
+            </div>
+          </div>
+        ))}
+        {thinking && (
+          <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 8 }}>
+            <div style={{ padding: '8px 14px', borderRadius: '3px 12px 12px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', display: 'flex', gap: 5, alignItems: 'center' }}>
+              {[0,1,2].map(i => (
+                <motion.div key={i} animate={{ y: [0, -5, 0], opacity: [0.4, 1, 0.4] }} transition={{ duration: 0.7, repeat: Infinity, delay: i * 0.15 }}
+                  style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--teal)' }} />
+              ))}
+            </div>
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Input area */}
+      <div style={{ width: '100%', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+          <input
+            ref={inputRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={onKey}
+            placeholder="Ask ATLAS anything..."
+            style={{
+              flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-bright)',
+              borderRadius: 10, padding: '10px 14px', color: 'white',
+              fontFamily: 'var(--font-body)', fontSize: 13, outline: 'none',
+              caretColor: 'var(--teal)',
+            }}
+            onFocus={e => e.target.style.borderColor = 'var(--teal)'}
+            onBlur={e => e.target.style.borderColor = 'var(--border-bright)'}
+          />
+          <motion.button
+            onClick={toggleListen}
+            animate={listening ? { scale: [1, 1.08, 1], boxShadow: ['0 0 0px rgba(160,80,255,0)', '0 0 16px rgba(160,80,255,0.5)', '0 0 0px rgba(160,80,255,0)'] } : {}}
+            transition={{ duration: 0.8, repeat: Infinity }}
+            style={{
+              width: 42, height: 42, borderRadius: 10, flexShrink: 0,
+              background: listening ? 'rgba(160,80,255,0.2)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${listening ? 'rgba(160,80,255,0.5)' : 'var(--border-bright)'}`,
+              color: listening ? '#c080ff' : 'var(--text-secondary)', fontSize: 16, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >🎤</motion.button>
+          <button onClick={() => send()} disabled={!input.trim() || thinking} style={{
+            width: 42, height: 42, borderRadius: 10, flexShrink: 0,
+            background: input.trim() && !thinking ? 'var(--teal)' : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${input.trim() && !thinking ? 'var(--teal)' : 'var(--border-bright)'}`,
+            color: input.trim() && !thinking ? 'var(--bg)' : 'var(--text-dim)',
+            fontSize: 18, cursor: input.trim() && !thinking ? 'pointer' : 'not-allowed',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all 0.15s',
+          }}>↑</button>
+        </div>
+        <div style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dim)', letterSpacing: '0.1em' }}>
+          PRESS SPACE TO SPEAK
+        </div>
+      </div>
+
+      <style>{`@keyframes blink { 0%, 100% { opacity: 1 } 50% { opacity: 0 } }`}</style>
+    </Card>
+  );
+}
+
+// ─── Schedule card ────────────────────────────────────────────────────────────
+function ScheduleCard({ events, loading, upcoming }) {
   const now = new Date();
-  const s = new Date(event.start), e = new Date(event.end);
-  const live = s <= now && e >= now;
-  const past = e < now;
-  const mins = Math.round((e - s) / 60000);
-  const dur = mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h${mins % 60 ? ` ${mins % 60}m` : ''}`;
   return (
-    <div style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border)', opacity: past ? 0.4 : 1, alignItems: 'center' }}>
-      <div style={{ flexShrink: 0, textAlign: 'center', minWidth: 42 }}>
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: live ? 'var(--teal)' : 'var(--text-primary)' }}>
-          {s.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-        </div>
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-secondary)' }}>{dur}</div>
+    <Card delay={0} style={{ gridColumn: '1', gridRow: '1 / 3', display: 'flex', flexDirection: 'column' }}>
+      <CardLabel>Today's Schedule</CardLabel>
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        {loading ? [0,1,2,3].map(i => <Skel key={i} w="100%" h={44} />) :
+          events.length === 0 ? (
+            <div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>No meetings today</div>
+              {upcoming.slice(0, 4).map((e, i) => (
+                <div key={i} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>
+                    {new Date(e.start).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'white' }}>{e.title}</div>
+                </div>
+              ))}
+            </div>
+          ) : events.map((e, i) => {
+            const s = new Date(e.start), end = new Date(e.end);
+            const live = s <= now && end >= now;
+            const past = end < now;
+            const mins = Math.round((end - s) / 60000);
+            const dur = mins < 60 ? `${mins}m` : `${Math.floor(mins/60)}h${mins%60?` ${mins%60}m`:''}`;
+            return (
+              <div key={i} style={{ display: 'flex', gap: 10, padding: '9px 0', borderBottom: '1px solid var(--border)', opacity: past ? 0.35 : 1 }}>
+                <div style={{ minWidth: 44, flexShrink: 0 }}>
+                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: live ? 'var(--teal)' : 'white' }}>
+                    {s.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-secondary)' }}>{dur}</div>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</div>
+                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: live ? 'var(--teal)' : 'var(--text-secondary)', marginTop: 1 }}>{live ? '● Live now' : e.location || ''}</div>
+                </div>
+              </div>
+            );
+          })
+        }
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: live ? 600 : 400 }}>{event.title}</div>
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: live ? 'var(--teal)' : 'var(--text-secondary)', marginTop: 1 }}>{live ? '● Live now' : event.location || ''}</div>
-      </div>
-      {live && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--teal)', flexShrink: 0, boxShadow: '0 0 8px var(--teal)' }} />}
-    </div>
+    </Card>
   );
 }
 
-function EmailRow({ thread }) {
-  const [open, setOpen] = useState(false);
-  const msg = thread.messages?.[thread.messages.length - 1];
-  const sender = (msg?.sender || '').replace(/<[^>]+>/, '').trim() || 'Unknown';
-  const h = msg?.date ? Math.floor((Date.now() - new Date(msg.date)) / 3600000) : 0;
-  const ago = h < 1 ? 'just now' : h < 24 ? `${h}h ago` : `${Math.floor(h / 24)}d ago`;
-  const initial = sender.charAt(0).toUpperCase();
-  const colors = ['#00c9ff', '#4d7ef7', '#ff4757', '#2ed573', '#ffa502'];
-  const color = colors[sender.charCodeAt(0) % colors.length];
-
-  return (
-    <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)', cursor: 'pointer', alignItems: 'flex-start' }}>
-      <div style={{
-        width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
-        background: `${color}22`, border: `1px solid ${color}44`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color,
-      }}>{initial}</div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6, marginBottom: 2 }}>
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{sender}</span>
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-secondary)', flexShrink: 0 }}>{ago}</span>
-        </div>
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: open ? 'clip' : 'ellipsis', whiteSpace: open ? 'normal' : 'nowrap' }}>
-          {open ? msg?.snippet : msg?.subject}
-        </div>
-      </div>
-    </div>
-  );
-}
-
+// ─── Main export ──────────────────────────────────────────────────────────────
 export default function BentoDashboard({ data, loading }) {
   const events = data?.events || [];
   const tasks = data?.tasks || [];
@@ -156,202 +439,100 @@ export default function BentoDashboard({ data, loading }) {
   const overdue = tasks.filter(t => t.due_date && new Date(t.due_date) < new Date());
   const dueToday = tasks.filter(t => t.due_date && new Date(t.due_date).toDateString() === new Date().toDateString());
 
-  const now = new Date();
-  const nextEvent = events.find(e => new Date(e.start) > now);
-  const nextMins = nextEvent ? Math.floor((new Date(nextEvent.start) - now) / 60000) : null;
-
   return (
     <div style={{
       flex: 1, minHeight: 0,
       display: 'grid',
-      gridTemplateColumns: '1fr 1fr 1fr 1fr',
-      gridTemplateRows: '100px 80px minmax(0, 1fr)',
-      gap: 10, padding: '12px',
+      gridTemplateColumns: '220px 1fr 1fr 220px',
+      gridTemplateRows: '1fr 1fr',
+      gap: 10, padding: '10px 12px 12px',
       overflow: 'hidden',
     }}>
+      {/* Schedule — left, full height */}
+      <ScheduleCard events={events} loading={loading} upcoming={upcoming} />
 
-      {/* ── ROW 1: STAT CARDS ── */}
+      {/* Centre orb + chat — spans 2 cols, 2 rows */}
+      <CentrePanel dashboardData={data} />
 
-      {/* TODAY'S FOCUS */}
-      <Card delay={0} style={{
-        gridColumn: '1', gridRow: '1',
-        background: 'linear-gradient(135deg, rgba(0,201,255,0.12) 0%, rgba(77,126,247,0.08) 100%)',
-        borderColor: 'rgba(0,201,255,0.25)',
-      }}>
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'rgba(0,201,255,0.7)', marginBottom: 6 }}>Today's Focus</div>
-        {loading ? <Skel w="50%" h={40} /> : (
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 40, fontWeight: 700, color: 'white', lineHeight: 1, letterSpacing: '-0.02em' }}>
-            {events.length}
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'rgba(255,255,255,0.5)', marginLeft: 6, fontWeight: 400 }}>
-              / {stats.totalHours || 0}h
-            </span>
-          </div>
+      {/* Right column — 4 stacked cards */}
+      {/* Tasks Due */}
+      <Card delay={0.06} style={{ gridColumn: '4', gridRow: '1', alignItems: 'center', justifyContent: 'center' }}>
+        <CardLabel>Tasks Due</CardLabel>
+        {loading ? <Skel w="40%" h={50} /> : (
+          <BigStat
+            value={overdue.length + dueToday.length}
+            label={overdue.length > 0 ? `${overdue.length} overdue` : 'all caught up'}
+            color={overdue.length > 0 ? 'var(--red)' : 'var(--teal)'}
+          />
         )}
-        {!loading && <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>meetings today</div>}
       </Card>
 
-      {/* OVERDUE */}
-      <Card delay={0.04} style={{ gridColumn: '2', gridRow: '1' }}>
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 6 }}>Overdue Tasks</div>
-        {loading ? <Skel w="40%" h={40} /> : (
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 40, fontWeight: 700, color: overdue.length ? 'var(--red)' : 'var(--text-primary)', lineHeight: 1, letterSpacing: '-0.02em' }}>
-            {overdue.length}
-          </div>
-        )}
-        {!loading && <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: overdue.length ? 'var(--red)' : 'var(--text-secondary)', marginTop: 4 }}>
-          {overdue.length ? `${overdue.length} need attention` : 'All clear'}
-        </div>}
+      {/* Inbox + Weather stacked in row 2 */}
+      <Card delay={0.1} style={{ gridColumn: '4', gridRow: '2', display: 'flex', flexDirection: 'column', gap: 0 }}>
+        {/* Inbox */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid var(--border)', paddingBottom: 14, marginBottom: 14 }}>
+          <CardLabel>Inbox</CardLabel>
+          {loading ? <Skel w="40%" h={42} /> : (
+            <BigStat
+              value={stats.unreadCount ?? threads.length}
+              label="unread emails"
+              color="var(--orange)"
+              size={42}
+            />
+          )}
+        </div>
+
+        {/* Weather */}
+        <WeatherMini loading={loading} />
       </Card>
 
-      {/* UNREAD */}
-      <Card delay={0.06} style={{ gridColumn: '3', gridRow: '1' }}>
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 6 }}>Unread Email</div>
-        {loading ? <Skel w="40%" h={40} /> : (
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 40, fontWeight: 700, color: 'var(--orange)', lineHeight: 1, letterSpacing: '-0.02em' }}>
-            {stats.unreadCount ?? threads.length}
-          </div>
-        )}
-        {!loading && <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>in inbox</div>}
-      </Card>
+    </div>
+  );
+}
 
-      {/* WEATHER */}
-      <div style={{ gridColumn: '4', gridRow: '1' }}>
-        <WeatherCard delay={0.08} />
+function CardLabel({ children }) {
+  return (
+    <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: '0.04em', marginBottom: 10, flexShrink: 0, width: '100%' }}>
+      {children}
+    </div>
+  );
+}
+
+function WeatherMini({ loading }) {
+  const [w, setW] = useState(null);
+  useEffect(() => {
+    fetch('/api/weather?city=London').then(r => r.json()).then(setW).catch(() => {});
+  }, []);
+
+  if (loading || !w) return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <Skel w="60%" h={30} />
+    </div>
+  );
+
+  const icon = (d = '') => {
+    const s = d.toLowerCase();
+    if (s.includes('sunny') || s.includes('clear')) return '☀️';
+    if (s.includes('cloud')) return '☁️';
+    if (s.includes('rain') || s.includes('shower')) return '🌧️';
+    if (s.includes('snow')) return '❄️';
+    return '🌤️';
+  };
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>Weather · London</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 26 }}>{icon(w.description)}</span>
+        <div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, color: 'white', lineHeight: 1 }}>{w.temp_c}°</div>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-secondary)' }}>{w.description}</div>
+        </div>
       </div>
-
-      {/* ── ROW 2: SECONDARY STATS ── */}
-
-      {/* NEXT MEETING */}
-      <Card delay={0.1} style={{ gridColumn: '1', gridRow: '2', flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-        <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(0,201,255,0.1)', border: '1px solid rgba(0,201,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>◷</div>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>Next Meeting</div>
-          {loading ? <Skel w="70%" h={18} /> : nextEvent ? (
-            <>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--teal)', lineHeight: 1 }}>
-                {nextMins < 60 ? `in ${nextMins}m` : `in ${Math.floor(nextMins / 60)}h ${nextMins % 60}m`}
-              </div>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-secondary)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nextEvent.title}</div>
-            </>
-          ) : <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-secondary)' }}>None scheduled</div>}
-        </div>
-      </Card>
-
-      {/* MEETINGS + HOURS */}
-      <Card delay={0.11} style={{ gridColumn: '2', gridRow: '2', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' }}>
-        {loading ? <Skel w="80%" h={30} /> : (
-          <>
-            <StatBlock label="Meetings" value={events.length} color="var(--teal)" size={24} />
-            <div style={{ width: 1, height: 36, background: 'var(--border)' }} />
-            <StatBlock label="Hours" value={`${stats.totalHours || 0}h`} color="var(--text-primary)" size={24} />
-            <div style={{ width: 1, height: 36, background: 'var(--border)' }} />
-            <StatBlock label="Due Today" value={dueToday.length} color="var(--blue)" size={24} />
-          </>
-        )}
-      </Card>
-
-      {/* ACTIVE PROJECTS */}
-      <Card delay={0.12} style={{ gridColumn: '3 / 5', gridRow: '2', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px' }}>
-        <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-secondary)' }}>Active Projects</div>
-          {['Signs & Symbols', 'Mythos', 'Blinc Studio'].map((p, i) => (
-            <div key={p} style={{
-              padding: '4px 10px', borderRadius: 20,
-              background: i === 0 ? 'rgba(0,201,255,0.1)' : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${i === 0 ? 'rgba(0,201,255,0.3)' : 'var(--border)'}`,
-              fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 500,
-              color: i === 0 ? 'var(--teal)' : 'var(--text-secondary)',
-            }}>{p}</div>
-          ))}
-        </div>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>
-          3 <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400 }}>/ 5</span>
-        </div>
-      </Card>
-
-      {/* ── ROW 3: MAIN CONTENT ── */}
-
-      {/* CALENDAR */}
-      <Card delay={0.15} style={{ gridColumn: '1', gridRow: '3', display: 'flex', flexDirection: 'column' }}>
-        <SectionLabel>Today's Schedule</SectionLabel>
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          {loading ? [0,1,2,3].map(i => <Skel key={i} w="100%" h={44} />) :
-            events.length === 0 ? (
-              <div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>No meetings today</div>
-                {upcoming.length > 0 && <>
-                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>Coming up</div>
-                  {upcoming.map((e, i) => (
-                    <div key={i} style={{ padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
-                      <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>
-                        {new Date(e.start).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
-                      </div>
-                      <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-primary)' }}>{e.title}</div>
-                    </div>
-                  ))}
-                </>}
-              </div>
-            ) : events.map((e, i) => <EventRow key={e.id || i} event={e} />)
-          }
-        </div>
-      </Card>
-
-      {/* TASKS */}
-      <Card delay={0.17} style={{ gridColumn: '2 / 3', gridRow: '3', display: 'flex', flexDirection: 'column' }}>
-        <SectionLabel>Tasks</SectionLabel>
-        {loading ? (
-          <div>
-            <ProgressRow label="Loading..." value={0} />
-            <ProgressRow label="Loading..." value={0} />
-            <ProgressRow label="Loading..." value={0} />
-          </div>
-        ) : (
-          <div>
-            <ProgressRow label="Overdue" value={overdue.length} max={10} color="var(--red)" />
-            <ProgressRow label="Due Today" value={dueToday.length} max={10} color="var(--teal)" />
-            <ProgressRow label="Total" value={tasks.length} max={20} color="var(--blue)" />
-          </div>
-        )}
-        <div style={{ flex: 1, overflowY: 'auto', marginTop: 8 }}>
-          {!loading && (overdue.length > 0 || dueToday.length > 0) && (
-            <>
-              {overdue.length > 0 && (
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--red)', marginBottom: 6 }}>
-                  Overdue — {overdue.length}
-                </div>
-              )}
-              {overdue.map((t, i) => <TaskRow key={t.id || i} task={t} />)}
-              {dueToday.length > 0 && (
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--teal)', margin: '10px 0 6px' }}>
-                  Due Today — {dueToday.length}
-                </div>
-              )}
-              {dueToday.map((t, i) => <TaskRow key={t.id || i} task={t} />)}
-            </>
-          )}
-          {!loading && overdue.length === 0 && dueToday.length === 0 && (
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-secondary)' }}>All tasks clear</div>
-          )}
-        </div>
-      </Card>
-
-      {/* INBOX */}
-      <Card delay={0.19} style={{ gridColumn: '3 / 5', gridRow: '3', display: 'flex', flexDirection: 'column' }}>
-        <SectionLabel action="View all">Inbox</SectionLabel>
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          {loading ? [0,1,2,3,4].map(i => <Skel key={i} w="100%" h={44} />) :
-            threads.length === 0 ?
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-secondary)' }}>Inbox zero — nice work.</div>
-            : threads.map((t, i) => <EmailRow key={t.id || i} thread={t} />)
-          }
-        </div>
-        {data?.mock && (
-          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)', fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)' }}>
-            Demo data — connect Gmail, Calendar & Todoist to see live data
-          </div>
-        )}
-      </Card>
-
+      <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-secondary)' }}>💧 {w.humidity}%</span>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-secondary)' }}>💨 {w.wind_kmph}km/h</span>
+      </div>
     </div>
   );
 }
