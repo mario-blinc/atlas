@@ -31,12 +31,17 @@ export default function WeatherCard({ delay = 0 }) {
       transition={{ delay, duration: 0.4 }}
       style={{
         background: 'var(--bg-card)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        border: '1px solid var(--border)',
         borderRadius: 'var(--radius)',
-        padding: '18px 20px',
+        padding: '16px 18px',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
         height: '100%',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+        position: 'relative',
       }}
     >
       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.18em', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 8 }}>
