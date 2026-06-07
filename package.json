@@ -5,6 +5,7 @@
   "scripts": {
     "install:all": "npm install && cd server && npm install && cd ../client && npm install",
     "build": "cd client && npm install && npm run build",
+    "vercel-build": "cd client && npm install && npm run build",
     "start": "cd server && npm install && node index.js",
     "dev": "concurrently \"cd server && node --watch index.js\" \"cd client && npm start\"",
     "server": "cd server && npm run dev",

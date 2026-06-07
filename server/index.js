@@ -13,9 +13,12 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const isProd = process.env.NODE_ENV === 'production';
 
-app.use(cors({ origin: isProd ? '*' : 'http://localhost:3000' }));
+// On Vercel, static files live at /client/build relative to project root
+const clientBuild = path.join(__dirname, '../client/build');
+
+app.use(cors({ origin: '*' }));
 app.use(express.json());
-if (isProd) app.use(express.static(path.join(__dirname, '../client/build')));
+app.use(express.static(clientBuild));
 
 // ─── Anthropic client (optional) ──────────────────────────────────────────
 let anthropic = null;
@@ -199,8 +202,6 @@ ${context.threads.map(t => `- From: ${t.messages?.[t.messages.length-1]?.sender?
   }
 });
 
-if (isProd) {
-  app.get('*', (req, res) => res.sendFile(path.join(__dirname, '../client/build/index.html')));
-}
+app.get('*', (req, res) => res.sendFile(path.join(clientBuild, 'index.html')));
 
 app.listen(PORT, () => console.log(`ATLAS server online — port ${PORT}`));
