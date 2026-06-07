@@ -12,6 +12,7 @@
     "client": "cd client && npm start"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
     "concurrently": "^8.2.2"
   }
 }
