@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import BentoDashboard from './components/BentoDashboard';
+import AtlasChat from './components/AtlasChat';
 
 export default function App() {
   const [data, setData] = useState(null);
@@ -29,6 +30,7 @@ export default function App() {
     <div style={{ width: '100vw', height: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <TopBar onRefresh={fetchData} loading={loading} />
       <BentoDashboard data={data} loading={loading} />
+      <AtlasChat dashboardData={data} />
     </div>
   );
 }
