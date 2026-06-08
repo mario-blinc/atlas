@@ -566,15 +566,6 @@ export default function MainView({ data }) {
         {/* Top bar */}
         <div style={{ flexShrink:0, height:52, display:'flex', alignItems:'center', justifyContent:'flex-end', padding:'0 28px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display:'flex', gap:12, alignItems:'center' }}>
-            {/* Voice button */}
-            <button onClick={() => setShowVoice(true)}
-              style={{ display:'flex', alignItems:'center', gap:7, padding:'6px 14px', borderRadius:20, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.6)', fontSize:12, cursor:'pointer', fontWeight:500, transition:'all 0.15s' }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor='rgba(0,200,255,0.4)'; e.currentTarget.style.color='#00c8ff'; e.currentTarget.style.background='rgba(0,200,255,0.08)'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.12)'; e.currentTarget.style.color='rgba(255,255,255,0.6)'; e.currentTarget.style.background='rgba(255,255,255,0.05)'; }}
-            >
-              <span>🎙</span> Change Voice
-            </button>
-            <div style={{ width:1, height:20, background:'rgba(255,255,255,0.08)' }} />
             <div style={{ width:32, height:32, borderRadius:'50%', background:'linear-gradient(135deg,#00c8ff,#4d7ef7)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700 }}>M</div>
           </div>
         </div>
