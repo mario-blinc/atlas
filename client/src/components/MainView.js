@@ -426,21 +426,47 @@ export default function MainView({ data }) {
     }).catch(()=>{});
   }, []);
 
-  // Voice output
-  const speak = useCallback(text => {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.rate  = parseFloat(localStorage.getItem('atlas_rate')  || '0.92');
-    u.pitch = parseFloat(localStorage.getItem('atlas_pitch') || '0.85');
-    const vs = window.speechSynthesis.getVoices();
-    const vn = localStorage.getItem('atlas_voice');
-    const v = vn ? vs.find(x=>x.name===vn) : vs.find(x=>x.name==='Daniel'||x.lang==='en-GB');
-    if (v) u.voice = v;
-    u.onstart = () => setOrbState('speaking');
-    u.onend   = () => { setOrbState('idle'); };
-    u.onerror = () => setOrbState('idle');
-    window.speechSynthesis.speak(u);
+  // ElevenLabs voice output
+  const audioRef = useRef(null);
+
+  const speak = useCallback(async text => {
+    // Stop any current audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    window.speechSynthesis?.cancel();
+
+    setOrbState('speaking');
+
+    try {
+      const res = await fetch('/api/speak', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voiceId: 'jgzHfSd2o0L7p0de3yr0' }),
+      });
+
+      if (!res.ok) throw new Error('ElevenLabs unavailable');
+
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+
+      audio.onended = () => { setOrbState('idle'); URL.revokeObjectURL(url); };
+      audio.onerror = () => { setOrbState('idle'); URL.revokeObjectURL(url); };
+      await audio.play();
+    } catch {
+      // Fallback to browser TTS if ElevenLabs fails
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 0.92; u.pitch = 0.85;
+      const vs = window.speechSynthesis?.getVoices() || [];
+      const v = vs.find(x => x.name === 'Daniel' || x.lang === 'en-GB');
+      if (v) u.voice = v;
+      u.onend   = () => setOrbState('idle');
+      u.onerror = () => setOrbState('idle');
+      window.speechSynthesis?.speak(u);
+    }
   }, []);
 
   // Send to ATLAS API
@@ -489,9 +515,7 @@ export default function MainView({ data }) {
   // Handle quick prompt (sidebar)
   const handleQuickPrompt = useCallback(promptObj => {
     if (promptObj.canned) {
-      // Canned response — no API call
       setResponse(promptObj.response);
-      setOrbState('speaking');
       speak(promptObj.response);
     } else {
       sendToAtlas(promptObj.text, null);
