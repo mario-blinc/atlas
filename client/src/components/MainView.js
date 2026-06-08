@@ -427,47 +427,62 @@ export default function MainView({ data }) {
   }, []);
 
   // ElevenLabs voice output
-  const audioRef = useRef(null);
+  const audioRef      = useRef(null);
+  const audioUnlocked = useRef(false);
+
+  // Unlock browser audio on first interaction
+  const unlockAudio = useCallback(() => {
+    if (audioUnlocked.current) return;
+    const a = new Audio();
+    a.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+    a.play().catch(() => {});
+    audioUnlocked.current = true;
+  }, []);
 
   const speak = useCallback(async text => {
-    // Stop any current audio
+    unlockAudio();
+
     if (audioRef.current) {
       audioRef.current.pause();
+      audioRef.current.src = '';
       audioRef.current = null;
     }
     window.speechSynthesis?.cancel();
-
     setOrbState('speaking');
 
     try {
       const res = await fetch('/api/speak', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, voiceId: 'jgzHfSd2o0L7p0de3yr0' }),
+        body: JSON.stringify({ text }),
       });
 
-      if (!res.ok) throw new Error('ElevenLabs unavailable');
+      if (!res.ok) throw new Error(`ElevenLabs error ${res.status}`);
 
-      const blob = await res.blob();
+      const arrayBuffer = await res.arrayBuffer();
+      const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
       const url  = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      audioRef.current = audio;
 
-      audio.onended = () => { setOrbState('idle'); URL.revokeObjectURL(url); };
-      audio.onerror = () => { setOrbState('idle'); URL.revokeObjectURL(url); };
-      await audio.play();
-    } catch {
-      // Fallback to browser TTS if ElevenLabs fails
-      const u = new SpeechSynthesisUtterance(text);
-      u.rate = 0.92; u.pitch = 0.85;
-      const vs = window.speechSynthesis?.getVoices() || [];
-      const v = vs.find(x => x.name === 'Daniel' || x.lang === 'en-GB');
-      if (v) u.voice = v;
-      u.onend   = () => setOrbState('idle');
-      u.onerror = () => setOrbState('idle');
-      window.speechSynthesis?.speak(u);
+      const audio = new Audio();
+      audioRef.current = audio;
+      audio.src = url;
+
+      audio.onended = () => { setOrbState('idle'); URL.revokeObjectURL(url); audioRef.current = null; };
+      audio.onerror = (e) => { console.error('Audio error:', e); setOrbState('idle'); URL.revokeObjectURL(url); };
+
+      const playPromise = audio.play();
+      if (playPromise) {
+        playPromise.catch(err => {
+          console.warn('Autoplay blocked:', err);
+          // Store audio to play on next user interaction
+          audioRef.current = audio;
+        });
+      }
+    } catch (err) {
+      console.error('ElevenLabs failed:', err);
+      setOrbState('idle');
     }
-  }, []);
+  }, [unlockAudio]);
 
   // Send to ATLAS API
   const sendToAtlas = useCallback(async (text, cardId=null) => {
@@ -514,13 +529,14 @@ export default function MainView({ data }) {
 
   // Handle quick prompt (sidebar)
   const handleQuickPrompt = useCallback(promptObj => {
+    unlockAudio();
     if (promptObj.canned) {
       setResponse(promptObj.response);
       speak(promptObj.response);
     } else {
       sendToAtlas(promptObj.text, null);
     }
-  }, [sendToAtlas, speak]);
+  }, [sendToAtlas, speak, unlockAudio]);
 
   // Voice input
   useEffect(() => {
