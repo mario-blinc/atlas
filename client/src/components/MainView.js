@@ -1,6 +1,135 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// ─── Voice Settings Panel ────────────────────────────────────────────────────
+function VoiceSettings({ onClose }) {
+  const [voices, setVoices]   = useState([]);
+  const [sel, setSel]         = useState(localStorage.getItem('atlas_voice') || '');
+  const [rate, setRate]       = useState(parseFloat(localStorage.getItem('atlas_rate')  || '0.92'));
+  const [pitch, setPitch]     = useState(parseFloat(localStorage.getItem('atlas_pitch') || '0.85'));
+  const [previewing, setPreview] = useState(false);
+
+  useEffect(() => {
+    const load = () => {
+      const all = window.speechSynthesis?.getVoices() || [];
+      // Group: preferred English voices first
+      const en = all.filter(v => v.lang.startsWith('en'));
+      const rest = all.filter(v => !v.lang.startsWith('en'));
+      setVoices([...en, ...rest]);
+    };
+    load();
+    window.speechSynthesis?.addEventListener('voiceschanged', load);
+    return () => window.speechSynthesis?.removeEventListener('voiceschanged', load);
+  }, []);
+
+  const preview = () => {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    setPreview(true);
+    const u = new SpeechSynthesisUtterance("Systems live. Good to have you back, Mario. What shall we work on today?");
+    u.rate = rate; u.pitch = pitch;
+    const v = window.speechSynthesis.getVoices().find(x => x.name === sel);
+    if (v) u.voice = v;
+    u.onend = () => setPreview(false);
+    u.onerror = () => setPreview(false);
+    window.speechSynthesis.speak(u);
+  };
+
+  const save = () => {
+    localStorage.setItem('atlas_voice', sel);
+    localStorage.setItem('atlas_rate',  rate);
+    localStorage.setItem('atlas_pitch', pitch);
+    window.speechSynthesis?.cancel();
+    onClose();
+  };
+
+  const enVoices = voices.filter(v => v.lang.startsWith('en'));
+  const otherVoices = voices.filter(v => !v.lang.startsWith('en'));
+
+  return (
+    <motion.div
+      initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+      onClick={onClose}
+      style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(6px)' }}
+    >
+      <motion.div
+        initial={{ scale:0.94, y:10 }} animate={{ scale:1, y:0 }} exit={{ scale:0.94 }}
+        onClick={e => e.stopPropagation()}
+        style={{ width:380, background:'#12151f', border:'1px solid rgba(255,255,255,0.12)', borderRadius:18, padding:24, boxShadow:'0 24px 60px rgba(0,0,0,0.6)' }}
+      >
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+          <div>
+            <div style={{ fontSize:16, fontWeight:700, color:'white' }}>Voice Settings</div>
+            <div style={{ fontSize:12, color:'rgba(255,255,255,0.4)', marginTop:2 }}>Choose how ATLAS sounds</div>
+          </div>
+          <button onClick={onClose} style={{ background:'transparent', border:'none', color:'rgba(255,255,255,0.4)', fontSize:20, cursor:'pointer' }}>✕</button>
+        </div>
+
+        {/* Voice selector */}
+        <div style={{ marginBottom:16 }}>
+          <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', letterSpacing:'0.1em', marginBottom:8, fontFamily:"'Space Mono',monospace" }}>VOICE</div>
+          <select value={sel} onChange={e => setSel(e.target.value)}
+            style={{ width:'100%', background:'#1a1d2e', border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, color:'white', fontSize:13, padding:'10px 12px', outline:'none', cursor:'pointer' }}>
+            <option value="">● Auto — Daniel / UK Male</option>
+            {enVoices.length > 0 && <optgroup label="English Voices">
+              {enVoices.map(v => <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>)}
+            </optgroup>}
+            {otherVoices.length > 0 && <optgroup label="Other Languages">
+              {otherVoices.map(v => <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>)}
+            </optgroup>}
+          </select>
+        </div>
+
+        {/* Speed */}
+        <div style={{ marginBottom:14 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
+            <span style={{ fontSize:11, color:'rgba(255,255,255,0.45)', letterSpacing:'0.1em', fontFamily:"'Space Mono',monospace" }}>SPEED</span>
+            <span style={{ fontSize:12, color:'#00c8ff', fontFamily:"'Orbitron',monospace" }}>{rate.toFixed(2)}x</span>
+          </div>
+          <input type="range" min="0.5" max="1.5" step="0.05" value={rate} onChange={e => setRate(parseFloat(e.target.value))}
+            style={{ width:'100%', accentColor:'#00c8ff', cursor:'pointer' }} />
+          <div style={{ display:'flex', justifyContent:'space-between', marginTop:4 }}>
+            <span style={{ fontSize:10, color:'rgba(255,255,255,0.2)' }}>Slow</span>
+            <span style={{ fontSize:10, color:'rgba(255,255,255,0.2)' }}>Fast</span>
+          </div>
+        </div>
+
+        {/* Pitch */}
+        <div style={{ marginBottom:20 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
+            <span style={{ fontSize:11, color:'rgba(255,255,255,0.45)', letterSpacing:'0.1em', fontFamily:"'Space Mono',monospace" }}>PITCH</span>
+            <span style={{ fontSize:12, color:'#00c8ff', fontFamily:"'Orbitron',monospace" }}>{pitch.toFixed(2)}</span>
+          </div>
+          <input type="range" min="0.5" max="1.5" step="0.05" value={pitch} onChange={e => setPitch(parseFloat(e.target.value))}
+            style={{ width:'100%', accentColor:'#00c8ff', cursor:'pointer' }} />
+          <div style={{ display:'flex', justifyContent:'space-between', marginTop:4 }}>
+            <span style={{ fontSize:10, color:'rgba(255,255,255,0.2)' }}>Low</span>
+            <span style={{ fontSize:10, color:'rgba(255,255,255,0.2)' }}>High</span>
+          </div>
+        </div>
+
+        {/* Buttons */}
+        <div style={{ display:'flex', gap:10 }}>
+          <button onClick={preview} disabled={previewing}
+            style={{ flex:1, padding:'11px', borderRadius:10, background:'rgba(0,200,255,0.08)', border:'1px solid rgba(0,200,255,0.25)', color:'#00c8ff', fontSize:13, fontWeight:500, cursor:'pointer', transition:'all 0.15s' }}
+            onMouseEnter={e => e.currentTarget.style.background='rgba(0,200,255,0.15)'}
+            onMouseLeave={e => e.currentTarget.style.background='rgba(0,200,255,0.08)'}
+          >
+            {previewing ? '▶ Playing…' : '▶ Preview Voice'}
+          </button>
+          <button onClick={save}
+            style={{ flex:1, padding:'11px', borderRadius:10, background:'#00c8ff', border:'none', color:'#0d0f16', fontSize:13, fontWeight:700, cursor:'pointer', transition:'all 0.15s' }}
+            onMouseEnter={e => e.currentTarget.style.background='#33d6ff'}
+            onMouseLeave={e => e.currentTarget.style.background='#00c8ff'}
+          >
+            Save Voice
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // ─── Quick prompts in sidebar ─────────────────────────────────────────────────
 const QUICK_PROMPTS = [
   {
@@ -275,6 +404,7 @@ export default function MainView({ data }) {
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [activeCard, setActiveCard] = useState(null);
+  const [showVoice, setShowVoice] = useState(false);
   const recRef    = useRef(null);
   const streamRef = useRef(false);
 
@@ -404,12 +534,23 @@ export default function MainView({ data }) {
         {/* Ambient glow */}
         <div style={{ position:'absolute', top:'-5%', left:'40%', transform:'translateX(-50%)', width:600, height:400, background:'radial-gradient(ellipse,rgba(0,180,255,0.07) 0%,rgba(0,80,200,0.03) 40%,transparent 70%)', pointerEvents:'none', filter:'blur(30px)' }} />
 
+        {/* Voice settings modal */}
+        <AnimatePresence>
+          {showVoice && <VoiceSettings onClose={() => setShowVoice(false)} />}
+        </AnimatePresence>
+
         {/* Top bar */}
         <div style={{ flexShrink:0, height:52, display:'flex', alignItems:'center', justifyContent:'flex-end', padding:'0 28px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-          <div style={{ display:'flex', gap:20, alignItems:'center' }}>
-            {['Dashboard','Settings','Help'].map(item => (
-              <button key={item} style={{ background:'transparent', border:'none', color: item==='Dashboard'?'white':'rgba(255,255,255,0.35)', fontSize:13, cursor:'pointer', fontWeight: item==='Dashboard'?600:400 }}>{item}</button>
-            ))}
+          <div style={{ display:'flex', gap:12, alignItems:'center' }}>
+            {/* Voice button */}
+            <button onClick={() => setShowVoice(true)}
+              style={{ display:'flex', alignItems:'center', gap:7, padding:'6px 14px', borderRadius:20, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.6)', fontSize:12, cursor:'pointer', fontWeight:500, transition:'all 0.15s' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor='rgba(0,200,255,0.4)'; e.currentTarget.style.color='#00c8ff'; e.currentTarget.style.background='rgba(0,200,255,0.08)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.12)'; e.currentTarget.style.color='rgba(255,255,255,0.6)'; e.currentTarget.style.background='rgba(255,255,255,0.05)'; }}
+            >
+              <span>🎙</span> Change Voice
+            </button>
+            <div style={{ width:1, height:20, background:'rgba(255,255,255,0.08)' }} />
             <div style={{ width:32, height:32, borderRadius:'50%', background:'linear-gradient(135deg,#00c8ff,#4d7ef7)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700 }}>M</div>
           </div>
         </div>
