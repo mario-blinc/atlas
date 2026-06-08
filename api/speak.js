@@ -7,7 +7,7 @@ module.exports = async function handler(req, res) {
   if (!text) return res.status(400).json({ error: 'No text provided' });
 
   const apiKey = process.env.ELEVENLABS_API_KEY;
-  const voice  = voiceId || process.env.ELEVENLABS_VOICE_ID || 'jgzHfSd2o0L7p0de3yr0';
+  const voice  = process.env.ELEVENLABS_VOICE_ID || 'onwK4e9ZLuTAKqWW03F9'; // Daniel - British male
 
   if (!apiKey) {
     return res.status(500).json({ error: 'ELEVENLABS_API_KEY not configured' });
