@@ -334,19 +334,22 @@ function StatCard({ card, onAsk, weatherData }) {
 }
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
-function Sidebar({ data, onPrompt }) {
+function Sidebar({ data, onPrompt, open, onClose }) {
   const [now, setNow] = useState(new Date());
   useEffect(() => { const t = setInterval(()=>setNow(new Date()),60000); return ()=>clearInterval(t); }, []);
 
   return (
-    <div style={{ width:220, flexShrink:0, height:'100%', background:'#0a0c14', borderRight:'1px solid rgba(255,255,255,0.06)', display:'flex', flexDirection:'column' }}>
+    <div className={`atlas-sidebar${open ? ' open' : ''}`} style={{ width:220, flexShrink:0, height:'100%', background:'#0a0c14', borderRight:'1px solid rgba(255,255,255,0.06)', display:'flex', flexDirection:'column' }}>
       {/* Logo */}
-      <div style={{ padding:'20px 18px 16px', borderBottom:'1px solid rgba(255,255,255,0.06)', display:'flex', alignItems:'center', gap:10 }}>
-        <div style={{ width:30, height:30, borderRadius:8, background:'linear-gradient(135deg,#00c8ff,#4d7ef7)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700, flexShrink:0, boxShadow:'0 0 14px rgba(0,200,255,0.3)' }}>◈</div>
-        <div>
-          <div style={{ fontFamily:"'Orbitron',monospace", fontSize:13, fontWeight:700, letterSpacing:'0.18em', color:'white' }}>ATLAS</div>
-          <div style={{ fontSize:9, color:'rgba(255,255,255,0.25)', letterSpacing:'0.1em' }}>SECOND BRAIN</div>
+      <div style={{ padding:'20px 18px 16px', borderBottom:'1px solid rgba(255,255,255,0.06)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <div style={{ width:30, height:30, borderRadius:8, background:'linear-gradient(135deg,#00c8ff,#4d7ef7)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700, flexShrink:0, boxShadow:'0 0 14px rgba(0,200,255,0.3)' }}>◈</div>
+          <div>
+            <div style={{ fontFamily:"'Orbitron',monospace", fontSize:13, fontWeight:700, letterSpacing:'0.18em', color:'white' }}>ATLAS</div>
+            <div style={{ fontSize:9, color:'rgba(255,255,255,0.25)', letterSpacing:'0.1em' }}>SECOND BRAIN</div>
+          </div>
         </div>
+        <button onClick={onClose} className="atlas-sidebar-close" style={{ display:'none', background:'transparent', border:'none', color:'rgba(255,255,255,0.4)', fontSize:18, cursor:'pointer', flexShrink:0 }}>✕</button>
       </div>
 
       {/* Quick Prompts */}
@@ -405,6 +408,7 @@ export default function MainView({ data }) {
   const [transcript, setTranscript] = useState('');
   const [activeCard, setActiveCard] = useState(null);
   const [showVoice, setShowVoice] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const recRef    = useRef(null);
   const streamRef = useRef(false);
 
@@ -530,6 +534,7 @@ export default function MainView({ data }) {
   // Handle quick prompt (sidebar)
   const handleQuickPrompt = useCallback(promptObj => {
     unlockAudio();
+    setSidebarOpen(false);
     if (promptObj.canned) {
       setResponse(promptObj.response);
       speak(promptObj.response);
@@ -566,10 +571,22 @@ export default function MainView({ data }) {
 
   return (
     <div style={{ width:'100vw', height:'100vh', display:'flex', overflow:'hidden', background:'#0d0f16' }}>
-      <Sidebar data={data} onPrompt={handleQuickPrompt} />
+      <Sidebar data={data} onPrompt={handleQuickPrompt} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      {/* Mobile backdrop, closes sidebar on tap outside */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.div
+            className="atlas-backdrop"
+            initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+            onClick={() => setSidebarOpen(false)}
+            style={{ display:'none', position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:140 }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Main */}
-      <div style={{ flex:1, display:'flex', flexDirection:'column', position:'relative', overflow:'hidden' }}>
+      <div style={{ flex:1, display:'flex', flexDirection:'column', position:'relative', overflow:'hidden', minWidth:0 }}>
 
         {/* Ambient glow */}
         <div style={{ position:'absolute', top:'-5%', left:'40%', transform:'translateX(-50%)', width:600, height:400, background:'radial-gradient(ellipse,rgba(0,180,255,0.07) 0%,rgba(0,80,200,0.03) 40%,transparent 70%)', pointerEvents:'none', filter:'blur(30px)' }} />
@@ -580,14 +597,16 @@ export default function MainView({ data }) {
         </AnimatePresence>
 
         {/* Top bar */}
-        <div style={{ flexShrink:0, height:52, display:'flex', alignItems:'center', justifyContent:'flex-end', padding:'0 28px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ flexShrink:0, height:52, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 16px 0 12px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+          <button onClick={() => setSidebarOpen(true)} className="atlas-hamburger" title="Open menu"
+            style={{ display:'none', width:36, height:36, borderRadius:8, border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.04)', color:'rgba(255,255,255,0.7)', fontSize:16, cursor:'pointer', alignItems:'center', justifyContent:'center', flexShrink:0 }}>☰</button>
           <div style={{ display:'flex', gap:12, alignItems:'center' }}>
             <div style={{ width:32, height:32, borderRadius:'50%', background:'linear-gradient(135deg,#00c8ff,#4d7ef7)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700 }}>M</div>
           </div>
         </div>
 
         {/* Scrollable content */}
-        <div style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', alignItems:'center', padding:'32px 40px 24px' }}>
+        <div className="atlas-main-content" style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', alignItems:'center', padding:'32px 40px 24px' }}>
 
           {/* Orb + greeting */}
           <motion.div initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} transition={{ duration:0.5 }}
@@ -627,6 +646,7 @@ export default function MainView({ data }) {
 
           {/* Stat cards */}
           <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.15 }}
+            className="atlas-stats-grid"
             style={{ width:'100%', maxWidth:720, display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:24 }}>
             {statCards.map(card => (
               <StatCard key={card.id} card={card} onAsk={text => sendToAtlas(text, card.id)} weatherData={card.weather ? weatherData : null} />
@@ -648,7 +668,30 @@ export default function MainView({ data }) {
         </div>
       </div>
 
-      <style>{`@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}`}</style>
+      <style>{`
+        @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+        @media (max-width: 860px) {
+          .atlas-sidebar {
+            position: fixed;
+            top: 0; left: 0;
+            z-index: 150;
+            transform: translateX(-100%);
+            transition: transform 0.25s ease;
+            box-shadow: 0 0 40px rgba(0,0,0,0.5);
+          }
+          .atlas-sidebar.open { transform: translateX(0); }
+          .atlas-sidebar-close { display: flex !important; }
+          .atlas-backdrop { display: block !important; }
+          .atlas-hamburger { display: flex !important; }
+          .atlas-main-content { padding: 20px 16px !important; }
+          .atlas-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+
+        @media (max-width: 480px) {
+          .atlas-stats-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </div>
   );
 }
