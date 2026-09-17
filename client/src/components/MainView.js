@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import TalkingOrb from './TalkingOrb';
 
 // ─── Voice Settings Panel ────────────────────────────────────────────────────
 function VoiceSettings({ onClose }) {
@@ -235,43 +236,6 @@ function getStatCards(data) {
   ];
 }
 
-// ─── 3D Glass Orb ─────────────────────────────────────────────────────────────
-function GlassOrb({ state }) {
-  const colors = {
-    idle:      { a:'#00c8ff', b:'#0066cc', c:'#00ff88' },
-    speaking:  { a:'#00e5ff', b:'#0099ff', c:'#00ffcc' },
-    listening: { a:'#cc66ff', b:'#6600cc', c:'#ff66cc' },
-    thinking:  { a:'#4488ff', b:'#2244cc', c:'#00ccff' },
-  }[state] || { a:'#00c8ff', b:'#0066cc', c:'#00ff88' };
-
-  return (
-    <div style={{ position:'relative', width:84, height:84 }}>
-      <motion.div animate={{ scale:[1,1.4,1], opacity:[0.3,0.6,0.3] }} transition={{ duration:state==='idle'?4:1.5, repeat:Infinity }}
-        style={{ position:'absolute', inset:-18, borderRadius:'50%', background:`radial-gradient(circle, ${colors.a}40 0%, transparent 70%)`, filter:'blur(10px)' }} />
-      <motion.div animate={{ rotate:360 }} transition={{ duration:state==='idle'?14:3.5, repeat:Infinity, ease:'linear' }}
-        style={{ position:'absolute', inset:-6, borderRadius:'50%', border:`1px solid ${colors.a}30`, borderTopColor:colors.a, borderRightColor:'transparent' }} />
-      <motion.div animate={{ scale:state==='idle'?[1,1.05,1]:[1,1.1,1] }} transition={{ duration:state==='idle'?3:0.7, repeat:Infinity }}
-        style={{ width:84, height:84, borderRadius:'50%', position:'relative', overflow:'hidden',
-          background:`radial-gradient(circle at 33% 28%, ${colors.a}cc 0%, ${colors.b}88 45%, #060a18 82%)`,
-          boxShadow:`0 0 35px ${colors.a}55, 0 0 70px ${colors.b}25, inset 0 0 25px rgba(0,0,0,0.5)` }}>
-        <div style={{ position:'absolute', top:'13%', left:'18%', width:'33%', height:'20%', borderRadius:'50%', background:'rgba(255,255,255,0.22)', filter:'blur(5px)', transform:'rotate(-20deg)' }} />
-        <div style={{ position:'absolute', bottom:'14%', left:'10%', width:'80%', height:'2px', background:`linear-gradient(90deg,transparent,${colors.c}50,transparent)`, filter:'blur(1px)' }} />
-        <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <motion.span animate={{ opacity:[0.4,1,0.4] }} transition={{ duration:2, repeat:Infinity }}
-            style={{ fontFamily:"'Orbitron',monospace", fontSize:7, fontWeight:700, letterSpacing:'0.1em', color:state==='idle'?'rgba(0,200,255,0.6)':state==='listening'?'#e0a0ff':'rgba(255,255,255,0.8)' }}>
-            {state==='idle'?'ATLAS':state==='listening'?'●':state==='thinking'?'···':'◈'}
-          </motion.span>
-        </div>
-      </motion.div>
-      {state !== 'idle' && [0,1].map(i => (
-        <motion.div key={i} initial={{ scale:0.9, opacity:0.5 }} animate={{ scale:1.9, opacity:0 }}
-          transition={{ duration:1.8, repeat:Infinity, delay:i*0.9 }}
-          style={{ position:'absolute', inset:0, borderRadius:'50%', border:`1px solid ${colors.a}50` }} />
-      ))}
-    </div>
-  );
-}
-
 // ─── Weather stat card inner ──────────────────────────────────────────────────
 function WeatherStat() {
   const [w, setW] = useState(null);
@@ -289,13 +253,13 @@ function StatCard({ card, onAsk, weatherData }) {
 
   return (
     <motion.div
-      whileHover={{ scale:1.02, borderColor:'rgba(255,255,255,0.18)' }}
+      whileHover={{ scale:1.02, borderColor:'rgba(255,255,255,0.16)', background:'rgba(255,255,255,0.055)' }}
       whileTap={{ scale:0.98 }}
-      style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:14, padding:'16px 18px', display:'flex', flexDirection:'column', gap:2, position:'relative', overflow:'hidden', cursor:'default', transition:'all 0.2s' }}
+      style={{ background:'rgba(255,255,255,0.035)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:18, padding:'18px 20px', display:'flex', flexDirection:'column', gap:2, position:'relative', overflow:'hidden', cursor:'default', transition:'background 0.2s, border-color 0.2s' }}
     >
       {/* Top row */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8 }}>
-        <span style={{ fontSize:20 }}>{isWeather && weatherData?.icon_char ? weatherData.icon_char : card.icon}</span>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10 }}>
+        <span style={{ width:34, height:34, borderRadius:10, background:`${card.color}18`, border:`1px solid ${card.color}30`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}>{isWeather && weatherData?.icon_char ? weatherData.icon_char : card.icon}</span>
         <div style={{ display:'flex', gap:6 }}>
           {/* Ask ATLAS button */}
           <button onClick={() => onAsk(card.prompt)}
@@ -409,6 +373,7 @@ export default function MainView({ data }) {
   const [activeCard, setActiveCard] = useState(null);
   const [showVoice, setShowVoice] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [inputText, setInputText] = useState('');
   const recRef    = useRef(null);
   const streamRef = useRef(false);
 
@@ -569,6 +534,14 @@ export default function MainView({ data }) {
 
   const reset = () => { window.speechSynthesis?.cancel(); setOrbState('idle'); setResponse(''); setActiveCard(null); setStreaming(false); streamRef.current=false; };
 
+  const handleSubmit = () => {
+    const text = inputText.trim();
+    if (!text) return;
+    unlockAudio();
+    setInputText('');
+    sendToAtlas(text, null);
+  };
+
   return (
     <div style={{ width:'100vw', height:'100vh', display:'flex', overflow:'hidden', background:'#0d0f16' }}>
       <Sidebar data={data} onPrompt={handleQuickPrompt} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -611,7 +584,7 @@ export default function MainView({ data }) {
           {/* Orb + greeting */}
           <motion.div initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} transition={{ duration:0.5 }}
             style={{ display:'flex', flexDirection:'column', alignItems:'center', marginBottom:24 }}>
-            <GlassOrb state={listening?'listening':orbState} />
+            <TalkingOrb state={listening?'listening':orbState} />
             <div style={{ marginTop:16, textAlign:'center' }}>
               <div style={{ fontSize:11, fontWeight:500, letterSpacing:'0.28em', color:'rgba(255,255,255,0.35)', textTransform:'uppercase', marginBottom:6 }}>
                 {greeting.toUpperCase()}
@@ -644,6 +617,34 @@ export default function MainView({ data }) {
             )}
           </AnimatePresence>
 
+          {/* Input pill */}
+          <motion.div initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.1 }}
+            style={{ width:'100%', maxWidth:620, marginBottom:28, display:'flex', alignItems:'center', gap:8, background:'rgba(255,255,255,0.045)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:16, padding:'8px 8px 8px 18px' }}>
+            <input
+              value={inputText}
+              onChange={e => setInputText(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
+              placeholder="Ask ATLAS anything…"
+              style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'white', fontSize:14, padding:'8px 0' }}
+            />
+            <motion.button onClick={toggleListen}
+              title={listening ? 'Stop listening' : 'Voice input'}
+              animate={listening ? { boxShadow:['0 0 0px rgba(160,80,255,0)','0 0 16px rgba(160,80,255,0.55)','0 0 0px rgba(160,80,255,0)'] } : {}}
+              transition={{ duration:0.9, repeat:Infinity }}
+              style={{ width:38, height:38, borderRadius:11, flexShrink:0, background:listening?'rgba(160,80,255,0.2)':'rgba(255,255,255,0.05)', border:`1px solid ${listening?'rgba(160,80,255,0.55)':'rgba(255,255,255,0.1)'}`, color:listening?'#c080ff':'rgba(255,255,255,0.5)', fontSize:16, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'background 0.2s, border-color 0.2s' }}>
+              🎤
+            </motion.button>
+            <button onClick={handleSubmit} title="Send" disabled={!inputText.trim()}
+              style={{ width:38, height:38, borderRadius:11, flexShrink:0, background: inputText.trim() ? '#00c8ff' : 'rgba(255,255,255,0.05)', border:'none', color: inputText.trim() ? '#0d0f16' : 'rgba(255,255,255,0.25)', fontSize:15, fontWeight:700, cursor: inputText.trim() ? 'pointer' : 'default', display:'flex', alignItems:'center', justifyContent:'center', transition:'background 0.2s, color 0.2s' }}>
+              ↑
+            </button>
+          </motion.div>
+          {listening && (
+            <div style={{ marginTop:-20, marginBottom:20, fontSize:10, color:'rgba(255,255,255,0.25)', letterSpacing:'0.14em', fontFamily:"'Space Mono',monospace" }}>
+              LISTENING — TAP MIC TO STOP
+            </div>
+          )}
+
           {/* Stat cards */}
           <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.15 }}
             className="atlas-stats-grid"
@@ -652,19 +653,6 @@ export default function MainView({ data }) {
               <StatCard key={card.id} card={card} onAsk={text => sendToAtlas(text, card.id)} weatherData={card.weather ? weatherData : null} />
             ))}
           </motion.div>
-
-          {/* Mic */}
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8 }}>
-            <motion.button onClick={toggleListen}
-              animate={listening ? { scale:[1,1.1,1], boxShadow:['0 0 0px rgba(160,80,255,0)','0 0 24px rgba(160,80,255,0.55)','0 0 0px rgba(160,80,255,0)'] } : {}}
-              transition={{ duration:0.9, repeat:Infinity }}
-              style={{ width:50, height:50, borderRadius:'50%', background:listening?'rgba(160,80,255,0.2)':'rgba(255,255,255,0.05)', border:`1px solid ${listening?'rgba(160,80,255,0.55)':'rgba(255,255,255,0.1)'}`, color:listening?'#c080ff':'rgba(255,255,255,0.5)', fontSize:20, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.2s' }}>
-              🎤
-            </motion.button>
-            <span style={{ fontSize:10, color:'rgba(255,255,255,0.18)', letterSpacing:'0.14em', fontFamily:"'Space Mono',monospace" }}>
-              {listening ? 'LISTENING — TAP TO STOP' : 'TAP TO SPEAK'}
-            </span>
-          </div>
         </div>
       </div>
 
