@@ -157,82 +157,42 @@ const QUICK_PROMPTS = [
   },
 ];
 
-// ─── Stat cards config (dynamic) ─────────────────────────────────────────────
-function getStatCards(data) {
-  const events  = data?.events  || [];
-  const tasks   = data?.tasks   || [];
-  const threads = data?.threads || [];
-  const overdue = tasks.filter(t => t.due_date && new Date(t.due_date) < new Date());
-  const next    = events.find(e => new Date(e.start) > new Date());
+// ─── Modes, agents, prompt chips ──────────────────────────────────────────────
+const AGENTS = [
+  { id: 'studio-manager',  name: 'Studio Manager',  sub: 'LIA',        icon: '🗂️' },
+  { id: 'junior-designer', name: 'Junior Designer', sub: 'Higgsfield', icon: '🎨' },
+  { id: 'growth',          name: 'Growth',          sub: null,         icon: '📈' },
+];
+
+const BUSINESS_PROMPT_CHIPS = [
+  { label: 'Draft outreach email',   agent: 'growth',          text: 'Draft an outreach email for a potential new client.' },
+  { label: 'Shot list for client',   agent: 'junior-designer', text: 'Put together a shot list for an upcoming client shoot.' },
+];
+const PERSONAL_PROMPT_CHIPS = [
+  { label: 'Write a LinkedIn post', text: 'Write me a LinkedIn post.' },
+];
+
+// ─── Stat cards config — placeholder until real APIs are wired ───────────────
+function getStatCards(mode) {
+  const NOT_CONNECTED = 'Not connected yet';
+
+  if (mode === 'business') {
+    return [
+      { id:'blinc-email',    icon:'📬', stat:'—', statLabel:'unread emails (Blinc)',   detail:NOT_CONNECTED,             link:'https://mail.google.com',     linkLabel:'Open Gmail',    color:'#ffa502', prompt:"What does my Blinc inbox look like?" },
+      { id:'blinc-tasks',    icon:'✅', stat:'—', statLabel:'tasks (Blinc)',           detail:NOT_CONNECTED,             link:'https://todoist.com/app',     linkLabel:'Open Todoist',  color:'#ff4757', prompt:"What Blinc tasks are overdue?" },
+      { id:'blinc-calendar', icon:'📅', stat:'—', statLabel:'meetings today',          detail:NOT_CONNECTED,             link:'https://calendar.google.com', linkLabel:'Open Calendar', color:'#00c8ff', prompt:"Walk me through today's Blinc schedule." },
+      { id:'weather',        icon:'🌤️', stat:null, statLabel:'London',                detail:'Tap to load',             link:'https://weather.com/en-GB/weather/today/l/London+England+GB', linkLabel:'Full forecast', color:'#2ed573', weather:true, prompt:"What's the weather like in London today?" },
+      { id:'blinc-invoices', icon:'💷', stat:'—', statLabel:'overdue invoices',        detail:`${NOT_CONNECTED} — Xero`, link:null,                          linkLabel:null,            color:'#ff6b81', prompt:"Are there any overdue invoices I should chase?" },
+      { id:'blinc-projects', icon:'📁', stat:'—', statLabel:'live client projects',    detail:NOT_CONNECTED,             link:null,                          linkLabel:null,            color:'#a29bfe', prompt:"What client projects are currently live?" },
+    ];
+  }
 
   return [
-    {
-      id: 'emails',
-      icon: '📬',
-      stat: threads.length,
-      statLabel: 'unread emails',
-      detail: threads.slice(0, 3).map(t => t.messages?.[t.messages.length-1]?.sender?.replace(/<[^>]+>/,'').trim().split(' ')[0]).filter(Boolean).join(' · ') || 'Inbox clear',
-      link: 'https://mail.google.com',
-      linkLabel: 'Open Gmail',
-      color: '#ffa502',
-      prompt: "What does my inbox look like? Summarise the most important emails.",
-    },
-    {
-      id: 'tasks',
-      icon: '✅',
-      stat: tasks.length,
-      statLabel: 'tasks',
-      detail: overdue.length > 0 ? `${overdue.length} overdue · ${tasks.length - overdue.length} upcoming` : 'All on track',
-      link: 'https://todoist.com/app',
-      linkLabel: 'Open Todoist',
-      color: '#ff4757',
-      prompt: "What tasks are overdue and what should I tackle first?",
-    },
-    {
-      id: 'calendar',
-      icon: '📅',
-      stat: events.length,
-      statLabel: 'meetings today',
-      detail: next ? `Next: ${next.title.split('—')[0].trim()} @ ${new Date(next.start).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}` : 'Schedule clear',
-      link: 'https://calendar.google.com',
-      linkLabel: 'Open Calendar',
-      color: '#00c8ff',
-      prompt: "Walk me through today's schedule. What do I have on?",
-    },
-    {
-      id: 'weather',
-      icon: '🌤️',
-      stat: null,
-      statLabel: 'London',
-      detail: 'Tap to load',
-      link: 'https://weather.com/en-GB/weather/today/l/London+England+GB',
-      linkLabel: 'Full forecast',
-      color: '#2ed573',
-      weather: true,
-      prompt: "What's the weather like in London today?",
-    },
-    {
-      id: 'focus',
-      icon: '🎯',
-      stat: overdue.length,
-      statLabel: 'overdue',
-      detail: overdue[0]?.content || 'Nothing overdue',
-      link: 'https://todoist.com/app',
-      linkLabel: 'Open Todoist',
-      color: '#ff6b81',
-      prompt: "Given everything on my plate, what should I focus on right now?",
-    },
-    {
-      id: 'briefing',
-      icon: '⚡',
-      stat: events.length + overdue.length,
-      statLabel: 'items today',
-      detail: `${events.length} meetings · ${overdue.length} overdue · ${threads.length} unread`,
-      link: null,
-      linkLabel: null,
-      color: '#a29bfe',
-      prompt: "Give me a full daily briefing — meetings, tasks, emails, anything urgent.",
-    },
+    { id:'personal-email',    icon:'📬', stat:'—', statLabel:'unread emails (personal)', detail:NOT_CONNECTED, link:'https://mail.google.com',     linkLabel:'Open Gmail',    color:'#ffa502', prompt:"What does my personal inbox look like?" },
+    { id:'personal-tasks',    icon:'✅', stat:'—', statLabel:'tasks (personal)',         detail:NOT_CONNECTED, link:'https://todoist.com/app',     linkLabel:'Open Todoist',  color:'#ff4757', prompt:"What's on my personal to-do list?" },
+    { id:'personal-calendar', icon:'📅', stat:'—', statLabel:'meetings today',           detail:NOT_CONNECTED, link:'https://calendar.google.com', linkLabel:'Open Calendar', color:'#00c8ff', prompt:"What's on my personal calendar today?" },
+    { id:'weather',           icon:'🌤️', stat:null, statLabel:'London',                 detail:'Tap to load', link:'https://weather.com/en-GB/weather/today/l/London+England+GB', linkLabel:'Full forecast', color:'#2ed573', weather:true, prompt:"What's the weather like in London today?" },
+    { id:'personal-projects', icon:'📁', stat:'—', statLabel:'live personal projects',   detail:'Long Story Short · Project Ridgeway', link:null, linkLabel:null, color:'#a29bfe', prompt:"What's the latest on Long Story Short and Project Ridgeway?" },
   ];
 }
 
@@ -374,6 +334,8 @@ export default function MainView({ data }) {
   const [showVoice, setShowVoice] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [inputText, setInputText] = useState('');
+  const [mode, setMode] = useState('personal'); // 'personal' | 'business' — business is Blinc-only for now
+  const [activeAgent, setActiveAgent] = useState('studio-manager');
   const recRef    = useRef(null);
   const streamRef = useRef(false);
 
@@ -384,7 +346,8 @@ export default function MainView({ data }) {
   const hour = new Date().getHours();
   const greeting = hour<12 ? 'Good Morning' : hour<17 ? 'Good Afternoon' : 'Good Evening';
 
-  const statCards = getStatCards(data);
+  const statCards = getStatCards(mode);
+  const promptChips = mode === 'business' ? BUSINESS_PROMPT_CHIPS : PERSONAL_PROMPT_CHIPS;
 
   // Weather data for weather card
   const [weatherData, setWeatherData] = useState(null);
@@ -595,6 +558,34 @@ export default function MainView({ data }) {
             </div>
           </motion.div>
 
+          {/* Mode toggle: Personal / Business */}
+          <div style={{ display:'flex', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:12, padding:4, marginBottom:mode==='business'?14:24, gap:4 }}>
+            {['personal','business'].map(m => (
+              <button key={m} onClick={() => setMode(m)}
+                style={{ padding:'8px 20px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, letterSpacing:'0.04em', textTransform:'capitalize',
+                  background: mode===m ? '#00c8ff' : 'transparent', color: mode===m ? '#0d0f16' : 'rgba(255,255,255,0.5)', transition:'background 0.2s, color 0.2s' }}>
+                {m === 'business' ? 'Business — Blinc' : 'Personal'}
+              </button>
+            ))}
+          </div>
+
+          {/* Agent selector — Business mode only */}
+          {mode === 'business' && (
+            <motion.div initial={{ opacity:0, y:-6 }} animate={{ opacity:1, y:0 }}
+              style={{ display:'flex', gap:8, marginBottom:24, flexWrap:'wrap', justifyContent:'center' }}>
+              {AGENTS.map(a => (
+                <button key={a.id} onClick={() => setActiveAgent(a.id)}
+                  style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 14px', borderRadius:20, cursor:'pointer',
+                    background: activeAgent===a.id ? 'rgba(0,200,255,0.12)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${activeAgent===a.id ? 'rgba(0,200,255,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                    color: activeAgent===a.id ? '#00c8ff' : 'rgba(255,255,255,0.55)', fontSize:12, fontWeight:600, transition:'all 0.15s' }}>
+                  <span style={{ fontSize:13 }}>{a.icon}</span>
+                  {a.name}{a.sub ? <span style={{ opacity:0.55, fontWeight:400 }}>· {a.sub}</span> : null}
+                </button>
+              ))}
+            </motion.div>
+          )}
+
           {/* Response */}
           <AnimatePresence>
             {response && (
@@ -644,6 +635,19 @@ export default function MainView({ data }) {
               LISTENING — TAP MIC TO STOP
             </div>
           )}
+
+          {/* Routed prompt chips — mode-specific quick actions */}
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'center', marginBottom:24, maxWidth:620 }}>
+            {promptChips.map((chip, i) => (
+              <button key={i} onClick={() => { if (chip.agent) setActiveAgent(chip.agent); sendToAtlas(chip.text, null); }}
+                style={{ padding:'8px 14px', borderRadius:20, border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.03)', color:'rgba(255,255,255,0.6)', fontSize:12, fontWeight:500, cursor:'pointer', transition:'all 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.background='rgba(0,200,255,0.08)'; e.currentTarget.style.borderColor='rgba(0,200,255,0.25)'; e.currentTarget.style.color='#00c8ff'; }}
+                onMouseLeave={e => { e.currentTarget.style.background='rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.1)'; e.currentTarget.style.color='rgba(255,255,255,0.6)'; }}
+              >
+                {chip.label}{chip.agent ? ` → ${AGENTS.find(a=>a.id===chip.agent)?.name}` : ''}
+              </button>
+            ))}
+          </div>
 
           {/* Stat cards */}
           <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.15 }}
