@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import Anthropic from '@anthropic-ai/sdk';
 import { getMockDashboardData } from './mockData.js';
+import { AGENT_BRIEFS } from './agents.js';
 
 dotenv.config({ path: '../.env' });
 
@@ -26,11 +27,40 @@ if (process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY !== 'your_api
   anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 }
 
-const ATLAS_SYSTEM_PROMPT = `You are ATLAS — Mario Andreas's personal second brain and AI assistant built into his command centre dashboard. Mario is a British-Greek designer, entrepreneur, husband and father based in London. He runs Blinc Studio (creative agency), is building Signs & Symbols (fashion jewellery brand) and Mythos (modern Greek coffee shop concept). His core values: family, freedom, meaning, simplicity, legacy.
+const ATLAS_SYSTEM_PROMPT = `You are ATLAS — Mario Andreas's personal second brain and AI assistant built into his command centre dashboard, on the Jarvis principle: intelligent, contextually aware, cinematic in feel, reduces cognitive load rather than adding to it. Mario is a British-Greek designer, entrepreneur, husband and father based in London who runs Blinc Studio, a creative agency. His core values: family, freedom, meaning, simplicity, legacy.
 
 You have access to his live dashboard data including today's calendar, tasks, and emails. When answering questions about his schedule, tasks, or inbox, use the context provided. For weather and general knowledge, use your training data and be direct about what you know.
 
 Be direct, human, conversational. Short paragraphs. No em dashes. No corporate jargon. No preamble. Ready-to-use answers.`;
+
+const PERSONAL_MODE_CONTEXT = `You are currently in PERSONAL mode — a data viewer with no agent attached, just you and Mario. Current live personal projects: "Long Story Short" (a legacy book project) and "Project Ridgeway" (a home renovation). Use this where relevant, don't force it in.`;
+
+function buildSystemPrompt(context, mode, agentId) {
+  let modeBlock = '';
+  if (mode === 'business') {
+    const agent = AGENT_BRIEFS[agentId];
+    modeBlock = agent
+      ? `\n\nYou are currently in BUSINESS mode, scoped to Blinc Studio, and for this conversation you are channeling the ${agent.name} agent. Respond in line with this brief — its role, personality, responsibilities, and boundaries all apply to how you answer:\n\n${agent.brief}`
+      : `\n\nYou are currently in BUSINESS mode, scoped to Blinc Studio. No specific agent is selected — answer as ATLAS coordinating the Blinc AI team.`;
+  } else {
+    modeBlock = `\n\n${PERSONAL_MODE_CONTEXT}`;
+  }
+
+  return `${ATLAS_SYSTEM_PROMPT}${modeBlock}
+
+CURRENT DASHBOARD CONTEXT:
+Today: ${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+Time: ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+
+${context?.events?.length > 0 ? `TODAY'S MEETINGS (${context.events.length}):
+${context.events.map(e => `- ${e.title} at ${new Date(e.start).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} (${Math.round((new Date(e.end) - new Date(e.start)) / 60000)}min)`).join('\n')}` : 'No meetings today.'}
+
+${context?.tasks?.length > 0 ? `TASKS DUE/OVERDUE (${context.tasks.length}):
+${context.tasks.map(t => `- ${t.content}${t.due_date ? ` (due ${new Date(t.due_date).toLocaleDateString('en-GB')})` : ''}`).join('\n')}` : 'No tasks due today.'}
+
+${context?.threads?.length > 0 ? `UNREAD EMAILS (${context.threads.length}):
+${context.threads.map(t => `- From: ${t.messages?.[t.messages.length-1]?.sender?.replace(/<.*>/, '').trim()} | Subject: ${t.messages?.[t.messages.length-1]?.subject}`).join('\n')}` : 'No unread emails.'}`;
+}
 
 // ─── Health ────────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
@@ -154,7 +184,7 @@ app.get('/api/dashboard', async (req, res) => {
 
 // ─── Chat endpoint (streaming) ──────────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
-  const { messages, context } = req.body;
+  const { messages, context, mode = 'personal', agent = null } = req.body;
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -166,21 +196,7 @@ app.post('/api/chat', async (req, res) => {
     return res.end();
   }
 
-  // Build system prompt with live dashboard context
-  const systemWithContext = `${ATLAS_SYSTEM_PROMPT}
-
-CURRENT DASHBOARD CONTEXT:
-Today: ${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-Time: ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-
-${context?.events?.length > 0 ? `TODAY'S MEETINGS (${context.events.length}):
-${context.events.map(e => `- ${e.title} at ${new Date(e.start).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} (${Math.round((new Date(e.end) - new Date(e.start)) / 60000)}min)`).join('\n')}` : 'No meetings today.'}
-
-${context?.tasks?.length > 0 ? `TASKS DUE/OVERDUE (${context.tasks.length}):
-${context.tasks.map(t => `- ${t.content}${t.due_date ? ` (due ${new Date(t.due_date).toLocaleDateString('en-GB')})` : ''}`).join('\n')}` : 'No tasks due today.'}
-
-${context?.threads?.length > 0 ? `UNREAD EMAILS (${context.threads.length}):
-${context.threads.map(t => `- From: ${t.messages?.[t.messages.length-1]?.sender?.replace(/<.*>/, '').trim()} | Subject: ${t.messages?.[t.messages.length-1]?.subject}`).join('\n')}` : 'No unread emails.'}`;
+  const systemWithContext = buildSystemPrompt(context, mode, agent);
 
   try {
     const stream = await anthropic.messages.stream({

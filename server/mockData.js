@@ -10,23 +10,23 @@ export function getMockDashboardData() {
   return {
     events: [
       { id: '1', title: 'Agency Weekly Standup', start: t(9, 0), end: t(9, 30), location: 'Google Meet', attendees: 4 },
-      { id: '2', title: 'Signs & Symbols — Brand Review', start: t(11, 0), end: t(12, 0), location: 'Studio', attendees: 2 },
+      { id: '2', title: 'Client Brand Review', start: t(11, 0), end: t(12, 0), location: 'Studio', attendees: 2 },
       { id: '3', title: 'Lunch with Pascal', start: t(13, 0), end: t(14, 0), location: 'Shoreditch', attendees: 2 },
-      { id: '4', title: 'Mythos — Investor Prep Call', start: t(15, 30), end: t(16, 30), location: 'Zoom', attendees: 3 },
+      { id: '4', title: 'Studio Manager Check-in', start: t(15, 30), end: t(16, 30), location: 'Zoom', attendees: 3 },
     ],
     upcoming: [
-      { id: '5', title: 'Meeting with DHOM Bistro', start: new Date(today.getTime() + 4 * 86400000).toISOString() },
-      { id: '6', title: 'Signs & Symbols Photoshoot', start: new Date(today.getTime() + 6 * 86400000).toISOString() },
+      { id: '5', title: 'New Client Kickoff', start: new Date(today.getTime() + 4 * 86400000).toISOString() },
+      { id: '6', title: 'Client Photoshoot', start: new Date(today.getTime() + 6 * 86400000).toISOString() },
     ],
     tasks: [
-      { id: '1', content: 'Kiese amends', due_date: new Date(today.getTime() - 18 * 86400000).toISOString(), priority: 2 },
-      { id: '2', content: 'Kickass Clothing proposal', due_date: new Date(today.getTime() - 15 * 86400000).toISOString(), priority: 2 },
+      { id: '1', content: 'Client amends', due_date: new Date(today.getTime() - 18 * 86400000).toISOString(), priority: 2 },
+      { id: '2', content: 'New business proposal', due_date: new Date(today.getTime() - 15 * 86400000).toISOString(), priority: 2 },
       { id: '3', content: 'Sort out pension', due_date: new Date(today.getTime() - 15 * 86400000).toISOString(), priority: 3 },
       { id: '4', content: 'Call Joey', due_date: new Date(today.getTime() - 3 * 86400000).toISOString(), priority: 1 },
       { id: '5', content: 'Message Pascal about AL Tech round', due_date: new Date(today.getTime() - 3 * 86400000).toISOString(), priority: 1 },
       { id: '6', content: 'Check message from Lee P', due_date: new Date(today.getTime() - 3 * 86400000).toISOString(), priority: 1 },
-      { id: '7', content: 'Tom\'s book — review chapter draft', due_date: today.toISOString(), priority: 2 },
-      { id: '8', content: 'Follow up with Mythos supplier', due_date: today.toISOString(), priority: 1 },
+      { id: '7', content: 'Long Story Short — review chapter draft', due_date: today.toISOString(), priority: 2 },
+      { id: '8', content: 'Follow up with supplier', due_date: today.toISOString(), priority: 1 },
     ],
     threads: [
       {
@@ -54,7 +54,7 @@ export function getMockDashboardData() {
         messages: [{
           id: 'm3', date: new Date(today.getTime() - 24 * 3600000).toISOString(),
           sender: 'Shopify <noreply@shopify.com>',
-          subject: 'Signs & Symbols — 3 new orders',
+          subject: '3 new orders to fulfil',
           snippet: 'You have 3 new orders waiting to be fulfilled.',
           labelIds: ['UNREAD', 'INBOX'],
         }]

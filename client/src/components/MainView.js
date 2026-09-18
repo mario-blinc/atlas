@@ -417,7 +417,7 @@ export default function MainView({ data }) {
   }, [unlockAudio]);
 
   // Send to ATLAS API
-  const sendToAtlas = useCallback(async (text, cardId=null) => {
+  const sendToAtlas = useCallback(async (text, cardId=null, agentOverride=null) => {
     if (streamRef.current) return;
     setActiveCard(cardId);
     setResponse('');
@@ -427,7 +427,12 @@ export default function MainView({ data }) {
     try {
       const res = await fetch('/api/chat', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ messages:[{role:'user',content:text}], context:{events,tasks,threads} }),
+        body: JSON.stringify({
+          messages:[{role:'user',content:text}],
+          context:{events,tasks,threads},
+          mode,
+          agent: mode === 'business' ? (agentOverride || activeAgent) : null,
+        }),
       });
       const reader = res.body.getReader();
       const dec = new TextDecoder();
@@ -457,7 +462,7 @@ export default function MainView({ data }) {
       setResponse('Could not reach ATLAS. Check server connection.');
       setStreaming(false); setOrbState('idle');
     } finally { streamRef.current=false; }
-  }, [events,tasks,threads,speak]);
+  }, [events,tasks,threads,speak,mode,activeAgent]);
 
   // Handle quick prompt (sidebar)
   const handleQuickPrompt = useCallback(promptObj => {
@@ -591,6 +596,11 @@ export default function MainView({ data }) {
             {response && (
               <motion.div initial={{ opacity:0, y:8, scale:0.98 }} animate={{ opacity:1, y:0, scale:1 }} exit={{ opacity:0 }}
                 style={{ width:'100%', maxWidth:620, marginBottom:20, padding:'14px 18px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:14, fontSize:14, color:'rgba(255,255,255,0.88)', lineHeight:1.7, position:'relative' }}>
+                {mode === 'business' && (
+                  <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.1em', color:'#00c8ff', marginBottom:6, textTransform:'uppercase' }}>
+                    {AGENTS.find(a => a.id === activeAgent)?.name || 'ATLAS'}
+                  </div>
+                )}
                 {response}
                 {streaming && <span style={{ display:'inline-block', width:2, height:'1em', background:'#00c8ff', marginLeft:2, verticalAlign:'text-bottom', animation:'blink 1s infinite' }} />}
                 <button onClick={reset} style={{ position:'absolute', top:10, right:12, background:'transparent', border:'none', color:'rgba(255,255,255,0.25)', cursor:'pointer', fontSize:15 }}>✕</button>
@@ -639,7 +649,7 @@ export default function MainView({ data }) {
           {/* Routed prompt chips — mode-specific quick actions */}
           <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'center', marginBottom:24, maxWidth:620 }}>
             {promptChips.map((chip, i) => (
-              <button key={i} onClick={() => { if (chip.agent) setActiveAgent(chip.agent); sendToAtlas(chip.text, null); }}
+              <button key={i} onClick={() => { if (chip.agent) setActiveAgent(chip.agent); sendToAtlas(chip.text, null, chip.agent); }}
                 style={{ padding:'8px 14px', borderRadius:20, border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.03)', color:'rgba(255,255,255,0.6)', fontSize:12, fontWeight:500, cursor:'pointer', transition:'all 0.15s' }}
                 onMouseEnter={e => { e.currentTarget.style.background='rgba(0,200,255,0.08)'; e.currentTarget.style.borderColor='rgba(0,200,255,0.25)'; e.currentTarget.style.color='#00c8ff'; }}
                 onMouseLeave={e => { e.currentTarget.style.background='rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.1)'; e.currentTarget.style.color='rgba(255,255,255,0.6)'; }}
