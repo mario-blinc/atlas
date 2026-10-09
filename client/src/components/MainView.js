@@ -1,15 +1,27 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import gsap from 'gsap';
-import { useGSAP } from '@gsap/react';
+import { motion, AnimatePresence, LayoutGroup, MotionConfig } from 'framer-motion';
 import {
   House, CheckSquare, Tray, CalendarBlank, Sparkle, ArrowUpRight, Microphone, ArrowUp, X, List,
   SlidersHorizontal, Sun, Cloud, CloudRain, Snowflake, CloudSun, EnvelopeSimple, CurrencyGbp,
   FolderSimple, Kanban, PaintBrush, TrendUp, Play,
 } from '@phosphor-icons/react';
-import ReactorCore from './ReactorCore';
+import LiquidCore from './LiquidCore';
 import './MainView.css';
 
-gsap.registerPlugin(useGSAP);
+// ─── Motion language: soft springs, things settle rather than stop ──────────
+const spring = { type: 'spring', stiffness: 380, damping: 34, mass: 0.8 };
+const glide  = { type: 'spring', stiffness: 120, damping: 20 };
+const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.05 } } };
+const rise = {
+  hidden: { opacity: 0, y: 18, filter: 'blur(10px)' },
+  show:   { opacity: 1, y: 0,  filter: 'blur(0px)', transition: glide },
+};
+const fade = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.6 } } };
+const settle = {
+  initial: { opacity: 0, y: 14, scale: 0.98, filter: 'blur(8px)' },
+  animate: { opacity: 1, y: 0,  scale: 1,    filter: 'blur(0px)', transition: glide },
+  exit:    { opacity: 0, y: -6, scale: 0.99, filter: 'blur(6px)', transition: { duration: 0.2 } },
+};
 
 // ─── Voice Settings ──────────────────────────────────────────────────────────
 function VoiceSettings({ onClose }) {
@@ -62,55 +74,61 @@ function VoiceSettings({ onClose }) {
   const otherVoices = voices.filter(v => !v.lang.startsWith('en'));
 
   return (
-    <div className="dialog-backdrop" onClick={onClose}>
-      <div className="dialog plate bracketed" role="dialog" aria-modal="true" aria-labelledby="voice-title" onClick={e => e.stopPropagation()}>
-        <div className="dialog-head">
-          <div>
-            <h2 id="voice-title">Voice settings</h2>
-            <p>Choose how ATLAS sounds</p>
+    <motion.div className="dialog-backdrop" onClick={onClose}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
+      <motion.div className="dialog shell" role="dialog" aria-modal="true" aria-labelledby="voice-title"
+        onClick={e => e.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.94, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97, y: 8 }}
+        transition={spring}>
+        <div className="shell-core">
+          <div className="dialog-head">
+            <div>
+              <h2 id="voice-title">Voice settings</h2>
+              <p>Choose how ATLAS sounds</p>
+            </div>
+            <button className="icon-btn" onClick={onClose} aria-label="Close"><X size={16} /></button>
           </div>
-          <button className="icon-btn" onClick={onClose} aria-label="Close"><X size={16} /></button>
-        </div>
 
-        <div className="field">
-          <label htmlFor="voice-select">Voice</label>
-          <select id="voice-select" value={sel} onChange={e => setSel(e.target.value)}>
-            <option value="">Auto (Daniel, UK male)</option>
-            {enVoices.length > 0 && <optgroup label="English">
-              {enVoices.map(v => <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>)}
-            </optgroup>}
-            {otherVoices.length > 0 && <optgroup label="Other languages">
-              {otherVoices.map(v => <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>)}
-            </optgroup>}
-          </select>
-        </div>
-
-        <div className="field">
-          <div className="field-row">
-            <label htmlFor="voice-rate">Speed</label>
-            <span className="field-value">{rate.toFixed(2)}×</span>
+          <div className="field">
+            <label htmlFor="voice-select">Voice</label>
+            <select id="voice-select" value={sel} onChange={e => setSel(e.target.value)}>
+              <option value="">Auto (Daniel, UK male)</option>
+              {enVoices.length > 0 && <optgroup label="English">
+                {enVoices.map(v => <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>)}
+              </optgroup>}
+              {otherVoices.length > 0 && <optgroup label="Other languages">
+                {otherVoices.map(v => <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>)}
+              </optgroup>}
+            </select>
           </div>
-          <input id="voice-rate" type="range" min="0.5" max="1.5" step="0.05" value={rate} onChange={e => setRate(parseFloat(e.target.value))} />
-          <div className="field-scale"><span>Slower</span><span>Faster</span></div>
-        </div>
 
-        <div className="field">
-          <div className="field-row">
-            <label htmlFor="voice-pitch">Pitch</label>
-            <span className="field-value">{pitch.toFixed(2)}</span>
+          <div className="field">
+            <div className="field-row">
+              <label htmlFor="voice-rate">Speed</label>
+              <span className="field-value">{rate.toFixed(2)}×</span>
+            </div>
+            <input id="voice-rate" type="range" min="0.5" max="1.5" step="0.05" value={rate} onChange={e => setRate(parseFloat(e.target.value))} />
+            <div className="field-scale"><span>Slower</span><span>Faster</span></div>
           </div>
-          <input id="voice-pitch" type="range" min="0.5" max="1.5" step="0.05" value={pitch} onChange={e => setPitch(parseFloat(e.target.value))} />
-          <div className="field-scale"><span>Lower</span><span>Higher</span></div>
-        </div>
 
-        <div className="dialog-actions">
-          <button className="btn" onClick={preview} disabled={previewing}>
-            <Play size={14} weight="fill" />{previewing ? 'Playing…' : 'Preview'}
-          </button>
-          <button className="btn primary" onClick={save}>Save voice</button>
+          <div className="field">
+            <div className="field-row">
+              <label htmlFor="voice-pitch">Pitch</label>
+              <span className="field-value">{pitch.toFixed(2)}</span>
+            </div>
+            <input id="voice-pitch" type="range" min="0.5" max="1.5" step="0.05" value={pitch} onChange={e => setPitch(parseFloat(e.target.value))} />
+            <div className="field-scale"><span>Lower</span><span>Higher</span></div>
+          </div>
+
+          <div className="dialog-actions">
+            <button className="btn" onClick={preview} disabled={previewing}>
+              <Play size={14} weight="fill" />{previewing ? 'Playing…' : 'Preview'}
+            </button>
+            <button className="btn primary" onClick={save}>Save voice</button>
+          </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -143,14 +161,14 @@ const PERSONAL_PROMPT_CHIPS = [
   { label: 'Write a LinkedIn post', text: 'Write me a LinkedIn post.' },
 ];
 
-// ─── Systems list — placeholder until real APIs are wired ────────────────────
+// ─── Connections — placeholder until real APIs are wired ─────────────────────
 const NOT_CONNECTED = 'Not connected';
 const GMAIL = 'https://mail.google.com';
 const TODOIST = 'https://todoist.com/app';
 const GCAL = 'https://calendar.google.com';
 const FORECAST = 'https://weather.com/en-GB/weather/today/l/London+England+GB';
 
-function getSystems(mode) {
+function getConnections(mode) {
   if (mode === 'business') {
     return [
       { id: 'blinc-email',    Icon: EnvelopeSimple, label: 'Blinc inbox',      detail: NOT_CONNECTED,          link: GMAIL,    linkLabel: 'Open Gmail',    prompt: 'What does my Blinc inbox look like?' },
@@ -181,25 +199,8 @@ function weatherIcon(desc) {
 
 const fmtTime = d => d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
-// Decode text in place, left to right, like a HUD resolving a readout.
-const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>/#';
-function scrambleTo(el, text, duration) {
-  const p = { v: 0 };
-  return gsap.to(p, {
-    v: 1, duration, ease: 'none',
-    onUpdate() {
-      if (!el) return;
-      const n = Math.floor(p.v * text.length);
-      let out = text.slice(0, n);
-      for (let i = n; i < text.length; i++) out += text[i] === ' ' ? ' ' : GLYPHS[(Math.random() * GLYPHS.length) | 0];
-      el.textContent = out;
-    },
-    onComplete() { if (el) el.textContent = text; },
-  });
-}
-
-// ─── Systems row ─────────────────────────────────────────────────────────────
-function SystemRow({ row, onAsk, weather }) {
+// ─── Connection row ──────────────────────────────────────────────────────────
+function ConnectionRow({ row, onAsk, weather }) {
   let Icon = row.Icon, detail = row.detail, value = null, on = false;
   if (row.weather) {
     Icon = weatherIcon(weather?.description);
@@ -208,24 +209,26 @@ function SystemRow({ row, onAsk, weather }) {
     else { on = true; value = `${weather.temp_c}°`; detail = `${weather.description} · feels ${weather.feels_like_c}°`; }
   }
   return (
-    <li className="sys-row" data-boot="item">
-      <span className={`sys-led${on ? ' on' : ''}`} title={on ? 'Live' : 'Offline'} />
-      <span className="sys-icon" aria-hidden="true"><Icon size={17} /></span>
+    <motion.li className="sys-row" variants={rise}>
+      <span className="sys-icon" aria-hidden="true">
+        <Icon size={18} weight="light" />
+        <span className={`sys-dot${on ? ' on' : ''}`} />
+      </span>
       <div style={{ minWidth: 0 }}>
         <div className="sys-label">{row.label}{value && <span className="sys-value">{value}</span>}</div>
         <div className="sys-detail">{detail}</div>
       </div>
       <div className="sys-actions">
         <button className="icon-btn sm" onClick={() => onAsk(row.prompt)} title="Ask ATLAS" aria-label={`Ask ATLAS about ${row.label}`}>
-          <Sparkle size={15} />
+          <Sparkle size={16} weight="light" />
         </button>
         {row.link && (
           <a className="icon-btn sm" href={row.link} target="_blank" rel="noopener noreferrer" title={row.linkLabel} aria-label={row.linkLabel}>
-            <ArrowUpRight size={15} />
+            <ArrowUpRight size={16} weight="light" />
           </a>
         )}
       </div>
-    </li>
+    </motion.li>
   );
 }
 
@@ -233,98 +236,125 @@ function SystemRow({ row, onAsk, weather }) {
 function TodayPanel({ data, now, mode, onAsk, weather }) {
   const events = data?.events || [];
   return (
-    <aside className="today" aria-label="Today" data-boot="panel">
-      <div className="today-grid">
-        <section className="panel-section">
-          <div className="panel-head">
-            <h2>Schedule</h2>
-            <span className="panel-meta">{now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-          </div>
-          {data?.mock && <p className="sample-note">Sample schedule. Calendar not connected yet.</p>}
-          {events.length === 0 ? (
-            <p className="empty">Nothing in the diary today.</p>
-          ) : (
-            <ul className="timeline">
-              {events.map(e => {
-                const s = new Date(e.start), en = new Date(e.end);
-                const live = s <= now && en >= now;
-                const past = en < now;
-                return (
-                  <li key={e.id} className={`tl-item${live ? ' live' : ''}${past ? ' past' : ''}`} data-boot="item">
-                    <span className="tl-node" />
-                    <span className="tl-time mono">{fmtTime(s)}</span>
-                    <div style={{ minWidth: 0 }}>
-                      <div className="tl-title">{e.title}{live && <span className="now-tag">NOW</span>}</div>
-                      {e.location && <div className="tl-where">{e.location}</div>}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
+    <motion.aside className="today shell" aria-label="Today" variants={rise}>
+      <motion.div className="shell-core" variants={stagger}>
+        <div className="today-grid">
+          <section className="panel-section">
+            <div className="panel-head">
+              <h2>Today</h2>
+              <span className="panel-meta">{now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+            </div>
+            {data?.mock && <p className="sample-note">Sample schedule. Calendar not connected yet.</p>}
+            {events.length === 0 ? (
+              <p className="empty">Nothing in the diary today.</p>
+            ) : (
+              <ul className="timeline">
+                {events.map(e => {
+                  const s = new Date(e.start), en = new Date(e.end);
+                  const live = s <= now && en >= now;
+                  const past = en < now;
+                  return (
+                    <motion.li key={e.id} variants={rise} className={`tl-item${live ? ' live' : ''}${past ? ' past' : ''}`}>
+                      <span className="tl-dot" />
+                      <span className="tl-time">{fmtTime(s)}</span>
+                      <div style={{ minWidth: 0 }}>
+                        <div className="tl-title">{e.title}{live && <span className="now-tag">Now</span>}</div>
+                        {e.location && <div className="tl-where">{e.location}</div>}
+                      </div>
+                    </motion.li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
 
-        <section className="panel-section">
-          <div className="panel-head">
-            <h2>Systems</h2>
-            <span className="panel-meta">{mode === 'business' ? 'Blinc' : 'Personal'}</span>
-          </div>
-          <ul className="systems">
-            {getSystems(mode).map(r => <SystemRow key={r.id} row={r} onAsk={onAsk} weather={r.weather ? weather : null} />)}
-          </ul>
-        </section>
-      </div>
-    </aside>
+          <section className="panel-section">
+            <div className="panel-head">
+              <h2>Connections</h2>
+              <span className="panel-meta">{mode === 'business' ? 'Blinc' : 'Personal'}</span>
+            </div>
+            <ul className="systems">
+              {getConnections(mode).map(r => <ConnectionRow key={r.id} row={r} onAsk={onAsk} weather={r.weather ? weather : null} />)}
+            </ul>
+          </section>
+        </div>
+      </motion.div>
+    </motion.aside>
   );
 }
 
-function ModeSwitch({ mode, setMode }) {
+// ─── Mode switch with a gliding indicator ────────────────────────────────────
+function ModeSwitch({ id, mode, setMode }) {
   return (
     <div className="segmented" role="group" aria-label="Mode">
-      <button aria-pressed={mode === 'personal'} onClick={() => setMode('personal')}>Personal</button>
-      <button aria-pressed={mode === 'business'} onClick={() => setMode('business')}>Blinc</button>
+      {[['personal', 'Personal'], ['business', 'Blinc']].map(([value, label]) => (
+        <button key={value} aria-pressed={mode === value} onClick={() => setMode(value)}>
+          {mode === value && <motion.span layoutId={`seg-${id}`} className="seg-indicator" transition={spring} />}
+          <span className="seg-label">{label}</span>
+        </button>
+      ))}
     </div>
   );
 }
 
 // ─── Rail ────────────────────────────────────────────────────────────────────
 function Rail({ open, onClose, onPrompt, mode, setMode, activeAgent, setActiveAgent }) {
+  const [hover, setHover] = useState(null);
   return (
-    <nav className={`rail${open ? ' open' : ''}`} aria-label="ATLAS" data-boot="panel">
-      <div className="rail-head">
-        <span className="brand-name">ATLAS</span>
-        <button className="icon-btn" onClick={onClose} aria-label="Close menu"><X size={16} /></button>
-      </div>
-
-      <div className="rail-body">
-        <div className="rail-group"><ModeSwitch mode={mode} setMode={setMode} /></div>
-
-        <div className="rail-group">
-          <span className="label">Protocols</span>
-          {QUICK_PROMPTS.map(p => (
-            <button key={p.label} className="cmd" onClick={() => onPrompt(p)} data-boot="item">
-              <p.Icon size={18} />{p.label}
-            </button>
-          ))}
+    <motion.nav className={`rail shell${open ? ' open' : ''}`} aria-label="ATLAS" variants={fade}>
+      <div className="shell-core">
+        <div className="rail-head">
+          <span className="brand-name">ATLAS</span>
+          <button className="icon-btn" onClick={onClose} aria-label="Close menu"><X size={18} weight="light" /></button>
         </div>
 
-        {mode === 'business' && (
-          <div className="rail-group console-enter">
-            <span className="label">Agents</span>
-            {AGENTS.map(a => (
-              <button key={a.id} className="cmd" aria-pressed={activeAgent === a.id} onClick={() => setActiveAgent(a.id)}>
-                <a.Icon size={18} /><span className="cmd-text">{a.name}</span>
-                {a.sub && <span className="cmd-sub">{a.sub}</span>}
-              </button>
-            ))}
-          </div>
-        )}
+        <LayoutGroup id="rail">
+          <motion.div className="rail-body" variants={stagger} onMouseLeave={() => setHover(null)}>
+            <div className="rail-group segmented-wrap">
+              <div className="shell pill-shell"><div className="shell-core"><ModeSwitch id="rail" mode={mode} setMode={setMode} /></div></div>
+            </div>
+
+            <div className="rail-group">
+              <span className="group-title">Protocols</span>
+              <div className="cmd-list">
+                {QUICK_PROMPTS.map(p => (
+                  <motion.button key={p.label} className="cmd" variants={rise}
+                    onClick={() => onPrompt(p)} onMouseEnter={() => setHover(p.label)} onFocus={() => setHover(p.label)}>
+                    {hover === p.label && <motion.span layoutId="rail-hover" className="hover-pill" transition={spring} />}
+                    <p.Icon size={19} weight="light" /><span className="cmd-text">{p.label}</span>
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+
+            <AnimatePresence initial={false}>
+              {mode === 'business' && (
+                <motion.div className="rail-group" key="agents"
+                  initial={{ opacity: 0, y: 10, filter: 'blur(6px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, y: 6, filter: 'blur(6px)' }} transition={glide}>
+                  <span className="group-title">Agents</span>
+                  <div className="cmd-list">
+                    {AGENTS.map(a => (
+                      <button key={a.id} className="cmd" aria-pressed={activeAgent === a.id}
+                        onClick={() => setActiveAgent(a.id)} onMouseEnter={() => setHover(a.id)} onFocus={() => setHover(a.id)}>
+                        {activeAgent === a.id && <motion.span layoutId="agent-active" className="active-pill" transition={spring} />}
+                        {hover === a.id && activeAgent !== a.id && <motion.span layoutId="rail-hover" className="hover-pill" transition={spring} />}
+                        <a.Icon size={19} weight="light" /><span className="cmd-text">{a.name}</span>
+                        {a.sub && <span className="cmd-sub">{a.sub}</span>}
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        </LayoutGroup>
       </div>
-    </nav>
+    </motion.nav>
   );
 }
 
-const STATUS = { idle: 'Standing by', listening: 'Listening', thinking: 'Processing', speaking: 'Speaking' };
+const STATUS = { idle: 'Ready when you are', listening: 'Listening', thinking: 'Thinking', speaking: 'Speaking' };
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 export default function MainView({ data }) {
@@ -346,8 +376,6 @@ export default function MainView({ data }) {
   const recRef    = useRef(null);
   const streamRef = useRef(false);
   const inputRef  = useRef(null);
-  const rootRef   = useRef(null);
-  const greetRef  = useRef(null);
 
   const events  = data?.events  || [];
   const tasks   = data?.tasks   || [];
@@ -364,31 +392,8 @@ export default function MainView({ data }) {
 
   const hour = now.getHours();
   const greeting = `${hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'}, Mario`;
-  const greetingRef = useRef(greeting);
-  greetingRef.current = greeting;
-  useEffect(() => { if (greetRef.current) greetRef.current.textContent = greeting; }, [greeting]);
-
   const promptChips = mode === 'business' ? BUSINESS_PROMPT_CHIPS : PERSONAL_PROMPT_CHIPS;
   const agentName = AGENTS.find(a => a.id === activeAgent)?.name;
-
-  // Boot sequence: the shell powers on, the core spins up, the greeting decodes.
-  // Replays on Daddy's Home. Skipped entirely under reduced motion.
-  useGSAP(() => {
-    const mm = gsap.matchMedia();
-    mm.add('(prefers-reduced-motion: no-preference)', () => {
-      const el = greetRef.current;
-      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-      tl.call(() => { if (el) el.textContent = ''; }, null, 0)
-        .from('.topbar-edge', { scaleX: 0, duration: 0.8 }, 0)
-        .from('[data-boot="panel"]', { clipPath: 'inset(0 0 100% 0)', opacity: 0, duration: 0.7, stagger: 0.1, clearProps: 'clipPath,opacity' }, 0.1)
-        .from('[data-boot="core"]', { scale: 0.72, opacity: 0, duration: 1.2, ease: 'expo.out', clearProps: 'transform,opacity' }, 0.15)
-        .add(scrambleTo(el, greetingRef.current, 0.9), 0.5)
-        .from('[data-boot="rise"]', { y: 14, opacity: 0, duration: 0.6, stagger: 0.08, clearProps: 'transform,opacity' }, 0.7)
-        .from('[data-boot="item"]', { x: -8, opacity: 0, duration: 0.4, stagger: 0.035, clearProps: 'transform,opacity' }, 0.55);
-      return () => { if (greetRef.current) greetRef.current.textContent = greetingRef.current; };
-    });
-    return () => mm.revert();
-  }, { scope: rootRef, dependencies: [bootKey] });
 
   // Voice output (ElevenLabs), routed through an analyser so the core can read the real voice
   const audioRef      = useRef(null);
@@ -601,104 +606,122 @@ export default function MainView({ data }) {
   const replyFrom = mode === 'business' ? agentName : 'ATLAS';
 
   return (
-    <div className="atlas" ref={rootRef}>
-      <header className="topbar">
-        <div className="brand">
-          <button className="icon-btn hamburger" onClick={() => setSidebarOpen(true)} aria-label="Open menu"><List size={18} /></button>
-          <ReactorCore size={26} mark />
-          <span className="brand-name">ATLAS</span>
-        </div>
-        <div className="topbar-mid"><ModeSwitch mode={mode} setMode={setMode} /></div>
-        <div className="topbar-right">
-          <span className="clock mono">{fmtTime(now)}</span>
-          <span className="clock-date">{now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
-          <button className="icon-btn" onClick={() => setShowVoice(true)} title="Voice settings" aria-label="Voice settings">
-            <SlidersHorizontal size={18} />
-          </button>
-          <span className="avatar" aria-label="Mario">M</span>
-        </div>
-        <span className="topbar-edge" />
-      </header>
-
-      <div className="body">
-        <Rail open={sidebarOpen} onClose={() => setSidebarOpen(false)} onPrompt={handleQuickPrompt}
-          mode={mode} setMode={setMode} activeAgent={activeAgent} setActiveAgent={setActiveAgent} />
-        {sidebarOpen && <div className="backdrop" onClick={() => setSidebarOpen(false)} />}
-
-        <div className="workspace">
-          <main className="stage">
-            <div className="stage-inner">
-              <div className="core-block">
-                <div className="core-wrap" data-boot="core">
-                  <ReactorCore state={core} size={236} analyserRef={analyserRef} bootKey={bootKey} />
-                </div>
-                <h1 className="greeting">
-                  <span className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{greeting}</span>
-                  <span ref={greetRef} aria-hidden="true">{null}</span>
-                </h1>
-                <div className={`status mono${core !== 'idle' ? ' live' : ''}`} aria-live="polite" data-boot="rise">
-                  <span className="status-led" />{STATUS[core]}
-                </div>
-                <p className="summary" data-boot="rise">{daySummary}</p>
-              </div>
-
-              {showReply && (
-                <section key={replyKey} className="console plate bracketed console-enter" aria-label={`Reply from ${replyFrom}`}>
-                  <div className="console-head">
-                    <span className="label">{replyFrom}</span>
-                    <button className="icon-btn sm" onClick={reset} aria-label="Dismiss reply"><X size={14} /></button>
-                  </div>
-                  {streaming && !response ? (
-                    <div className="scan" aria-label="ATLAS is thinking"><span /><span /><span /></div>
-                  ) : (
-                    <div className={`console-body${responseError ? ' error' : ''}`}>
-                      {response}
-                      {streaming && <span className="caret" />}
-                    </div>
-                  )}
-                </section>
-              )}
-
-              <form className={`composer plate${listening ? ' listening' : ''}`} onSubmit={handleSubmit} data-boot="rise">
-                <input
-                  ref={inputRef}
-                  value={inputText}
-                  onChange={e => setInputText(e.target.value)}
-                  placeholder={listening ? (transcript || 'Listening…') : 'Ask ATLAS anything…'}
-                  aria-label="Ask ATLAS"
-                />
-                {!inputText && !listening && <span className="kbd" aria-hidden="true">⌘K</span>}
-                <button type="button" className="mic-btn" onClick={toggleListen} aria-pressed={listening}
-                  title={listening ? 'Stop listening' : 'Speak to ATLAS'} aria-label={listening ? 'Stop listening' : 'Speak to ATLAS'}>
-                  <Microphone size={18} weight={listening ? 'fill' : 'regular'} />
-                </button>
-                <button type="submit" className="send-btn" disabled={!inputText.trim()} aria-label="Send">
-                  <ArrowUp size={18} weight="bold" />
-                </button>
-              </form>
-              <p className={`composer-hint${listening ? ' live' : ''}`}>
-                {listening
-                  ? (transcript ? `“${transcript}”` : 'Listening. Tap the mic or press Esc to stop.')
-                  : mode === 'business' ? `Replies come from ${agentName}.` : null}
-              </p>
-
-              <div className="chips" data-boot="rise">
-                {promptChips.map(chip => (
-                  <button key={chip.label} className="chip"
-                    onClick={() => { if (chip.agent) setActiveAgent(chip.agent); sendToAtlas(chip.text, chip.agent); }}>
-                    {chip.label}
-                    {chip.agent && <span className="chip-agent">· {AGENTS.find(a => a.id === chip.agent)?.name}</span>}
-                  </button>
-                ))}
-              </div>
+    <MotionConfig reducedMotion="user">
+      <motion.div className="atlas" initial="hidden" animate="show" variants={stagger}>
+        <motion.header className="islands" variants={rise}>
+          <div className="brand">
+            <button className="icon-btn hamburger" onClick={() => setSidebarOpen(true)} aria-label="Open menu"><List size={20} weight="light" /></button>
+            <LiquidCore size={28} mark />
+            <span className="brand-name">ATLAS</span>
+          </div>
+          <div className="island-mode shell pill-shell">
+            <div className="shell-core"><ModeSwitch id="top" mode={mode} setMode={setMode} /></div>
+          </div>
+          <div className="island-right shell pill-shell">
+            <div className="shell-core">
+              <span className="clock">{fmtTime(now)}</span>
+              <span className="clock-date">{now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+              <button className="icon-btn" onClick={() => setShowVoice(true)} title="Voice settings" aria-label="Voice settings">
+                <SlidersHorizontal size={18} weight="light" />
+              </button>
+              <span className="avatar" aria-label="Mario">M</span>
             </div>
-          </main>
+          </div>
+        </motion.header>
 
-          <TodayPanel data={data} now={now} mode={mode} weather={weather} onAsk={text => sendToAtlas(text)} />
-        </div>
-      </div>
+        <motion.div className="body" key={bootKey} initial="hidden" animate="show" variants={stagger}>
+          <Rail open={sidebarOpen} onClose={() => setSidebarOpen(false)} onPrompt={handleQuickPrompt}
+            mode={mode} setMode={setMode} activeAgent={activeAgent} setActiveAgent={setActiveAgent} />
+          {sidebarOpen && <div className="backdrop" onClick={() => setSidebarOpen(false)} />}
 
-      {showVoice && <VoiceSettings onClose={() => setShowVoice(false)} />}
-    </div>
+          <div className="workspace">
+            <main className="stage">
+              <motion.div className="stage-inner" variants={stagger}>
+                <div className="hero">
+                  <motion.div variants={{
+                    hidden: { opacity: 0, scale: 0.8, filter: 'blur(16px)' },
+                    show:   { opacity: 1, scale: 1,   filter: 'blur(0px)', transition: { type: 'spring', stiffness: 70, damping: 16 } },
+                  }}>
+                    <LiquidCore state={core} size={260} analyserRef={analyserRef} />
+                  </motion.div>
+                  <motion.h1 className="greeting" variants={rise}>{greeting}</motion.h1>
+                  <motion.div variants={rise}>
+                    <div className={`status${core !== 'idle' ? ' live' : ''}`} aria-live="polite">
+                      <span className="status-dot" />{STATUS[core]}
+                    </div>
+                  </motion.div>
+                  <motion.p className="summary" variants={rise}>{daySummary}</motion.p>
+                </div>
+
+                <AnimatePresence mode="popLayout">
+                  {showReply && (
+                    <motion.section key={replyKey} className="console shell" aria-label={`Reply from ${replyFrom}`} {...settle}>
+                      <div className="shell-core">
+                        <div className="console-head">
+                          <LiquidCore size={20} mark />
+                          <span className="console-from">{replyFrom}</span>
+                          <button className="icon-btn sm" onClick={reset} aria-label="Dismiss reply"><X size={15} weight="light" /></button>
+                        </div>
+                        {streaming && !response ? (
+                          <div className="shimmer" aria-label="ATLAS is thinking"><span /><span /><span /></div>
+                        ) : (
+                          <div className={`console-body${responseError ? ' error' : ''}`}>
+                            {response}
+                            {streaming && <span className="caret" />}
+                          </div>
+                        )}
+                      </div>
+                    </motion.section>
+                  )}
+                </AnimatePresence>
+
+                <motion.div layout="position" transition={glide} variants={rise}>
+                  <form className={`composer shell pill-shell${listening ? ' listening' : ''}`} onSubmit={handleSubmit}>
+                    <div className="shell-core">
+                      <input
+                        ref={inputRef}
+                        value={inputText}
+                        onChange={e => setInputText(e.target.value)}
+                        placeholder={listening ? (transcript || 'Listening…') : 'Ask ATLAS anything…'}
+                        aria-label="Ask ATLAS"
+                      />
+                      {!inputText && !listening && <span className="kbd" aria-hidden="true">⌘K</span>}
+                      <button type="button" className="mic-btn" onClick={toggleListen} aria-pressed={listening}
+                        title={listening ? 'Stop listening' : 'Speak to ATLAS'} aria-label={listening ? 'Stop listening' : 'Speak to ATLAS'}>
+                        <Microphone size={19} weight={listening ? 'fill' : 'light'} />
+                      </button>
+                      <button type="submit" className="send-btn" disabled={!inputText.trim()} aria-label="Send">
+                        <ArrowUp size={18} weight="bold" />
+                      </button>
+                    </div>
+                  </form>
+                  <p className={`composer-hint${listening ? ' live' : ''}`}>
+                    {listening
+                      ? (transcript ? `“${transcript}”` : 'Listening. Tap the mic or press Esc to stop.')
+                      : mode === 'business' ? `Replies come from ${agentName}.` : null}
+                  </p>
+
+                  <div className="chips">
+                    {promptChips.map(chip => (
+                      <button key={chip.label} className="chip"
+                        onClick={() => { if (chip.agent) setActiveAgent(chip.agent); sendToAtlas(chip.text, chip.agent); }}>
+                        {chip.label}
+                        {chip.agent && <span className="chip-agent">· {AGENTS.find(a => a.id === chip.agent)?.name}</span>}
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              </motion.div>
+            </main>
+
+            <TodayPanel data={data} now={now} mode={mode} weather={weather} onAsk={text => sendToAtlas(text)} />
+          </div>
+        </motion.div>
+
+        <AnimatePresence>
+          {showVoice && <VoiceSettings key="voice" onClose={() => setShowVoice(false)} />}
+        </AnimatePresence>
+      </motion.div>
+    </MotionConfig>
   );
 }

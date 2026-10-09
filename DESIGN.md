@@ -1,21 +1,20 @@
 # ATLAS design
 
-A personal AI command centre in dark brushed steel: cinematic, moody, ultra modern. Think a Stark workshop HUD, built with standard controls so it stays a working tool. Dark only, by design.
+Soft steel glass. Dark and moody, but fluid and calm rather than techy: rounded glass shells, pill controls, a liquid core, and spring motion that settles instead of stopping. The aim is always the best experience for daily use. Dark only, by design.
 
 ## Layout
 
-- **Top bar** (60px): reactor mark and ATLAS wordmark, Personal / Blinc switch in the centre, clock, voice settings, avatar. A light seam runs along its lower edge.
-- **Rail** (252px, left): Protocols (quick prompts) and Agents (Blinc only).
-- **Stage** (centre, max 720px, vertically centred): the reactor core, greeting, live status, reply console, composer, prompt chips.
-- **Today** (360px, right): schedule timeline, then Systems (each source with an online/offline LED).
-- Under 1180px the Today panel drops below the stage in two columns. Under 860px the rail becomes a drawer and the mode switch moves into it.
+- **Islands** (top, floating): ATLAS mark and wordmark on the left, the Personal / Blinc switch in a centred pill, and clock, voice settings and avatar in a right pill.
+- **Rail** (252px shell, left): Protocols (quick prompts) and Agents (Blinc only).
+- **Stage** (centre, max 680px, vertically centred): the liquid core, greeting, status pill, summary, reply, composer, prompt chips.
+- **Today** (360px shell, right): schedule timeline, then Connections.
+- Everything floats with a 14px gutter. Under 1180px, Today drops below the stage in two columns. Under 860px, the rail becomes a floating drawer and the mode switch moves into it.
 
 ## Material
 
-- **Plate:** brushed steel. Fine horizontal grain over a cold vertical falloff, 1px steel border, bevel (light top edge, dark bottom edge), deep soft drop shadow.
-- **Brackets:** machined corner brackets in ion, on the reply console and the dialog only.
-- **Ground:** near-black with a cold light pool behind the core, plus fixed film grain.
-- **Radius:** 4px everywhere (2px inside segmented controls).
+- **Shell (double bezel):** a hairline tray (`rgba(255,255,255,.022)`, 1px hairline, 26px radius, 6px padding) holding a glass core (translucent steel, top sheen, deep soft shadow, 20px radius). Pills use the same structure at full radius.
+- **Ground:** near-black with three slow-drifting light pools (ion and steel), plus fixed film grain.
+- **Radii:** shell 26, core 20, list items 12, controls fully round.
 
 ## Tokens
 
@@ -23,34 +22,34 @@ Defined in `client/src/index.css`.
 
 | Role | Value |
 |---|---|
-| Void | `#07080a` |
-| Steel | `950 #0b0d10`, `900 #101318`, `850 #14181e`, `800 #1a1f26`, `700 #232931`, `600 #2f363f` |
-| Lines | steel at 8% / 13% / 22% |
-| Text | `#e4e9ef`, secondary `#9aa3ae`, tertiary `#7a838e` |
-| Ion (sole accent) | `#9fd6ff`, hover `#c6e7ff`, ink `#04121e` |
-| Alert | `#ff6b5e` |
+| Void | `#06070a` |
+| Glass | `rgba(20,24,31,.62)`, raised `rgba(28,33,42,.72)`, hover `rgba(38,45,56,.6)` |
+| Hairlines | 7% and 12% steel |
+| Text | `#eaeef3`, secondary `#a2abb6`, tertiary `#7d8691` |
+| Ion (sole accent) | `#9fd6ff` to `#c6e7ff`, ink `#051321` |
+| Alert | `#ff7a6e` |
+| Easing | fluid `cubic-bezier(.32,.72,0,1)`, out `cubic-bezier(.16,1,.3,1)` |
 
-Ion is only for live state (now, listening, online), the primary action, the selected mode or agent, and the core.
+Ion is only for live state, the primary action, the selected mode or agent, and the core.
 
 ## Type
 
-- **Michroma** (wide, Eurostile-like): wordmark, greeting, panel titles, mode switch. Uppercase, tracked 0.06 to 0.36em.
-- **Geist Sans**: all interface and reading text.
-- **Geist Mono**: times, temperatures, values, status.
+Geist Sans for everything, sentence case. The greeting is 30 to 42px, weight 500, tracked -0.035em. Tabular figures throughout. Phosphor icons in the Light weight.
 
-All three are self-hosted via `@fontsource`.
+## Signature: the liquid core
 
-## Signature: the reactor core
+`LiquidCore.js` is a canvas glass sphere. A smooth blob surface sits over a drifting inner current, with a specular highlight, a soft halo and two orbits with a gliding light. While ATLAS speaks, the rim ripples with the real ElevenLabs audio through a Web Audio analyser. Listening swells it and thinking speeds the inner swirl. It stays still under reduced motion.
 
-`ReactorCore.js` is a canvas with a tick ring and scanner sweep, a segmented arc ring, dashed and hairline rings, a waveform ring and a white-hot plasma core. State sets speed and intensity: idle, listening, thinking (fast spin, fast sweep) and speaking. While ATLAS speaks, the waveform reads the real ElevenLabs audio through a Web Audio analyser. It stays static under reduced motion.
+## Motion (Framer Motion)
 
-## Motion
-
-- **Boot sequence (GSAP):** the top seam draws, panels power on with a clip reveal, the core spins up, the greeting decodes, then content rises in. It replays on Daddy's Home. Skipped under reduced motion.
-- **Everything else:** 150 to 300ms CSS transitions for state changes only. Replies power on with a clip reveal.
+- **Entrance:** islands, rail, stage and panels lift in from a blur with a staggered spring. It replays on Daddy's Home.
+- **Shared layout:** the mode indicator glides between options, a hover highlight glides between rail items, and the active-agent highlight slides.
+- **Replies:** settle in from a blur, and the composer glides down to make room.
+- **Micro-interactions:** pressing scales controls to 0.94 to 0.97, and the send arrow lifts on hover.
+- **Not used here:** GSAP, because the Taste rules say not to mix it with Motion in one tree.
 
 ## Rules
 
-- No emoji, no cyan neon, no gradient text.
-- Sources that aren't wired up say "Not connected", with the LED off. Sample data is labelled as sample.
+- No uppercase-tracked labels, monospace, ticks, brackets or HUD chrome.
+- Sources that aren't wired up say "Not connected", with the status dot off. Sample data is labelled as sample.
 - Every control has hover, focus-visible, active and disabled states.

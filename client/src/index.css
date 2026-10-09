@@ -1,50 +1,51 @@
-@import '@fontsource/michroma/400.css';
 @import '@fontsource/geist-sans/400.css';
 @import '@fontsource/geist-sans/500.css';
 @import '@fontsource/geist-sans/600.css';
-@import '@fontsource/geist-mono/400.css';
-@import '@fontsource/geist-mono/500.css';
 
 :root {
-  /* Gunmetal ground and brushed-steel surfaces */
-  --void:      #07080a;
-  --steel-950: #0b0d10;
-  --steel-900: #101318;
-  --steel-850: #14181e;
-  --steel-800: #1a1f26;
-  --steel-700: #232931;
-  --steel-600: #2f363f;
+  /* Deep steel ground */
+  --void:      #06070a;
+  --steel-950: #0a0c10;
+  --steel-900: #0f1217;
+  --steel-850: #13171d;
+  --steel-800: #191e25;
+  --steel-700: #222831;
 
-  --line:       rgba(205, 214, 226, 0.08);
-  --line-mid:   rgba(205, 214, 226, 0.13);
-  --line-hi:    rgba(205, 214, 226, 0.22);
-  --bevel-hi:   rgba(255, 255, 255, 0.07);
-  --bevel-lo:   rgba(0, 0, 0, 0.55);
+  /* Glass: translucent steel with a hairline and a top highlight */
+  --glass:       rgba(20, 24, 31, 0.62);
+  --glass-2:     rgba(28, 33, 42, 0.72);
+  --glass-hover: rgba(38, 45, 56, 0.6);
+  --hair:        rgba(214, 224, 238, 0.07);
+  --hair-2:      rgba(214, 224, 238, 0.12);
+  --sheen:       inset 0 1px 1px rgba(255, 255, 255, 0.07);
 
-  --text:   #e4e9ef;
-  --text-2: #9aa3ae;
-  --text-3: #7a838e;
+  --text:   #eaeef3;
+  --text-2: #a2abb6;
+  --text-3: #7d8691;
 
-  /* Ion: the one accent. Live state, primary action, the core. */
-  --ion:       #9fd6ff;
-  --ion-hi:    #c6e7ff;
-  --ion-ink:   #04121e;
-  --ion-soft:  rgba(159, 214, 255, 0.1);
-  --ion-line:  rgba(159, 214, 255, 0.38);
+  /* Ion: the one accent */
+  --ion:      #9fd6ff;
+  --ion-hi:   #c6e7ff;
+  --ion-ink:  #051321;
+  --ion-soft: rgba(159, 214, 255, 0.1);
+  --ion-ring: rgba(159, 214, 255, 0.35);
 
-  --alert: #ff6b5e;
+  --alert: #ff7a6e;
 
-  --radius: 4px;
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Concentric radii for nested shells */
+  --r-shell: 26px;
+  --r-core:  20px;
+  --r-item:  12px;
 
-  --font:         'Geist Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-display: 'Michroma', 'Geist Sans', ui-sans-serif, sans-serif;
-  --font-mono:    'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --ease-fluid: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-out:   cubic-bezier(0.16, 1, 0.3, 1);
 
-  --z-grain: 50;
+  --font: 'Geist Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
   --z-backdrop: 20;
   --z-drawer: 30;
   --z-dialog: 40;
+  --z-grain: 50;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -55,6 +56,7 @@ body {
   font-family: var(--font);
   font-size: 14px;
   line-height: 1.5;
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -62,13 +64,13 @@ button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 ::selection { background: rgba(159, 214, 255, 0.24); color: #fff; }
 input { caret-color: var(--ion); }
-:focus-visible { outline: 1px solid var(--ion); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--ion-ring); outline-offset: 2px; }
 
-* { scrollbar-width: thin; scrollbar-color: rgba(205, 214, 226, 0.14) transparent; }
+* { scrollbar-width: thin; scrollbar-color: rgba(214, 224, 238, 0.12) transparent; }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(205, 214, 226, 0.12); border-radius: 0; }
-::-webkit-scrollbar-thumb:hover { background: rgba(205, 214, 226, 0.24); }
+::-webkit-scrollbar-thumb { background: rgba(214, 224, 238, 0.1); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(214, 224, 238, 0.2); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
