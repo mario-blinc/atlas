@@ -492,7 +492,7 @@ export default function MainView({ data }) {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({
           messages:[{role:'user',content:text}],
-          context:{events,tasks,threads},
+          context:{events,tasks,threads,mock:!!data?.mock},
           mode,
           agent: mode === 'business' ? (agentOverride || activeAgent) : null,
         }),
@@ -510,6 +510,7 @@ export default function MainView({ data }) {
           try {
             const p = JSON.parse(line.slice(6));
             if (p.done) break;
+            if (p.error) throw new Error(p.error);
             if (p.text) {
               if (first) { setOrbState('speaking'); first=false; }
               setResponse(prev=>prev+p.text);
