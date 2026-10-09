@@ -1,12 +1,77 @@
+@import '@fontsource/geist-sans/400.css';
+@import '@fontsource/geist-sans/500.css';
+@import '@fontsource/geist-sans/600.css';
+
+:root {
+  /* Deep steel ground */
+  --void:      #06070a;
+  --steel-950: #0a0c10;
+  --steel-900: #0f1217;
+  --steel-850: #13171d;
+  --steel-800: #191e25;
+  --steel-700: #222831;
+
+  /* Glass: translucent steel with a hairline and a top highlight */
+  --glass:       rgba(20, 24, 31, 0.62);
+  --glass-2:     rgba(28, 33, 42, 0.72);
+  --glass-hover: rgba(38, 45, 56, 0.6);
+  --hair:        rgba(214, 224, 238, 0.07);
+  --hair-2:      rgba(214, 224, 238, 0.12);
+  --sheen:       inset 0 1px 1px rgba(255, 255, 255, 0.07);
+
+  --text:   #eaeef3;
+  --text-2: #a2abb6;
+  --text-3: #7d8691;
+
+  /* Ion: the one accent */
+  --ion:      #9fd6ff;
+  --ion-hi:   #c6e7ff;
+  --ion-ink:  #051321;
+  --ion-soft: rgba(159, 214, 255, 0.1);
+  --ion-ring: rgba(159, 214, 255, 0.35);
+
+  --alert: #ff7a6e;
+
+  /* Concentric radii for nested shells */
+  --r-shell: 26px;
+  --r-core:  20px;
+  --r-item:  12px;
+
+  --ease-fluid: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-out:   cubic-bezier(0.16, 1, 0.3, 1);
+
+  --font: 'Geist Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --z-backdrop: 20;
+  --z-drawer: 30;
+  --z-dialog: 40;
+  --z-grain: 50;
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, #root { height: 100%; width: 100%; overflow: hidden; }
 body {
-  background: #0d0f16;
-  color: #ffffff;
-  font-family: 'Inter', sans-serif;
+  background: var(--void);
+  color: var(--text);
+  font-family: var(--font);
   font-size: 14px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
-::-webkit-scrollbar { width: 3px; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+::selection { background: rgba(159, 214, 255, 0.24); color: #fff; }
+input { caret-color: var(--ion); }
+:focus-visible { outline: 2px solid var(--ion-ring); outline-offset: 2px; }
+
+* { scrollbar-width: thin; scrollbar-color: rgba(214, 224, 238, 0.12) transparent; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: rgba(214, 224, 238, 0.1); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(214, 224, 238, 0.2); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}

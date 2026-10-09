@@ -20,6 +20,23 @@ ${agent.brief}`;
   return `${BASE_SYSTEM}\n\n${PERSONAL_CONTEXT}`;
 }
 
+// Today's calendar, tasks and inbox as sent by the dashboard, so ATLAS knows Mario's day
+function buildContext(context) {
+  const now = new Date();
+  const time = d => new Date(d).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+  const events = context?.events || [];
+  const tasks = context?.tasks || [];
+  const threads = context?.threads || [];
+  const lines = [
+    `Today: ${now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/London' })}, ${time(now)} London time.`,
+    context?.mock ? 'Note: calendar, tasks and inbox are not connected yet; the items below are sample data, so say so if Mario asks about them.' : '',
+    events.length ? `Meetings today (${events.length}):\n${events.map(e => `- ${e.title} at ${time(e.start)}${e.location ? ` (${e.location})` : ''}`).join('\n')}` : 'No meetings today.',
+    tasks.length ? `Tasks due or overdue (${tasks.length}):\n${tasks.map(t => `- ${t.content}${t.due_date ? ` (due ${new Date(t.due_date).toLocaleDateString('en-GB')})` : ''}`).join('\n')}` : 'No tasks due.',
+    threads.length ? `Unread emails (${threads.length}):\n${threads.map(t => { const m = t.messages?.[t.messages.length - 1] || {}; return `- From ${(m.sender || '').replace(/<.*>/, '').trim()}: ${m.subject || ''}`; }).join('\n')}` : 'No unread emails.',
+  ];
+  return `\n\nCURRENT DASHBOARD CONTEXT:\n${lines.filter(Boolean).join('\n\n')}`;
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
@@ -29,21 +46,22 @@ module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
 
-  const key = process.env.ANTHROPIC_API_KEY;
+  // The key is stored as `anthropic` in the atlas-dashboard Vercel project; accept either name
+  const key = process.env.ANTHROPIC_API_KEY || process.env.anthropic;
   if (!key || key === 'your_api_key_here') {
     res.write(`data: ${JSON.stringify({ text: "Add ANTHROPIC_API_KEY to Vercel environment variables to enable ATLAS chat." })}\n\n`);
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     return res.end();
   }
 
-  const { messages = [], mode = 'personal', agent = null } = req.body;
+  const { messages = [], mode = 'personal', agent = null, context = null } = req.body;
   const client = new Anthropic({ apiKey: key });
 
   try {
     const stream = await client.messages.stream({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1024,
-      system: buildSystem(mode, agent),
+      system: buildSystem(mode, agent) + buildContext(context),
       messages: messages.map(m => ({ role: m.role, content: m.content })),
     });
     for await (const chunk of stream) {

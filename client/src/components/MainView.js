@@ -1,8 +1,31 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import TalkingOrb from './TalkingOrb';
+import { motion, AnimatePresence, LayoutGroup, MotionConfig } from 'framer-motion';
+import {
+  House, CheckSquare, Tray, CalendarBlank, Sparkle, ArrowUpRight, Microphone, ArrowUp, X, List,
+  SlidersHorizontal, Sun, Cloud, CloudRain, Snowflake, CloudSun, EnvelopeSimple, CurrencyGbp,
+  FolderSimple, Kanban, PaintBrush, TrendUp, Play,
+} from '@phosphor-icons/react';
+import Melo from './Melo';
+import './MainView.css';
 
-// ─── Voice Settings Panel ────────────────────────────────────────────────────
+// ─── Motion language: soft springs, things settle rather than stop ──────────
+const spring = { type: 'spring', stiffness: 380, damping: 34, mass: 0.8 };
+const glide  = { type: 'spring', stiffness: 120, damping: 20 };
+// Blur resolves on a tween: a spring would overshoot below zero, which is an invalid filter
+const unblur = { filter: { duration: 0.55, ease: [0.16, 1, 0.3, 1] } };
+const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.05 } } };
+const rise = {
+  hidden: { opacity: 0, y: 18, filter: 'blur(10px)' },
+  show:   { opacity: 1, y: 0,  filter: 'blur(0px)', transition: { ...glide, ...unblur } },
+};
+const fade = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.6 } } };
+const settle = {
+  initial: { opacity: 0, y: 14, scale: 0.98, filter: 'blur(8px)' },
+  animate: { opacity: 1, y: 0,  scale: 1,    filter: 'blur(0px)', transition: { ...glide, ...unblur } },
+  exit:    { opacity: 0, y: -6, scale: 0.99, filter: 'blur(6px)', transition: { duration: 0.2 } },
+};
+
+// ─── Voice Settings ──────────────────────────────────────────────────────────
 function VoiceSettings({ onClose }) {
   const [voices, setVoices]   = useState([]);
   const [sel, setSel]         = useState(localStorage.getItem('atlas_voice') || '');
@@ -13,7 +36,6 @@ function VoiceSettings({ onClose }) {
   useEffect(() => {
     const load = () => {
       const all = window.speechSynthesis?.getVoices() || [];
-      // Group: preferred English voices first
       const en = all.filter(v => v.lang.startsWith('en'));
       const rest = all.filter(v => !v.lang.startsWith('en'));
       setVoices([...en, ...rest]);
@@ -22,6 +44,12 @@ function VoiceSettings({ onClose }) {
     window.speechSynthesis?.addEventListener('voiceschanged', load);
     return () => window.speechSynthesis?.removeEventListener('voiceschanged', load);
   }, []);
+
+  useEffect(() => {
+    const onKey = e => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   const preview = () => {
     if (!window.speechSynthesis) return;
@@ -48,322 +76,349 @@ function VoiceSettings({ onClose }) {
   const otherVoices = voices.filter(v => !v.lang.startsWith('en'));
 
   return (
-    <motion.div
-      initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-      onClick={onClose}
-      style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(6px)' }}
-    >
-      <motion.div
-        initial={{ scale:0.94, y:10 }} animate={{ scale:1, y:0 }} exit={{ scale:0.94 }}
+    <motion.div className="dialog-backdrop" onClick={onClose}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
+      <motion.div className="dialog shell" role="dialog" aria-modal="true" aria-labelledby="voice-title"
         onClick={e => e.stopPropagation()}
-        style={{ width:380, background:'#12151f', border:'1px solid rgba(255,255,255,0.12)', borderRadius:18, padding:24, boxShadow:'0 24px 60px rgba(0,0,0,0.6)' }}
-      >
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-          <div>
-            <div style={{ fontSize:16, fontWeight:700, color:'white' }}>Voice Settings</div>
-            <div style={{ fontSize:12, color:'rgba(255,255,255,0.4)', marginTop:2 }}>Choose how ATLAS sounds</div>
+        initial={{ opacity: 0, scale: 0.94, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97, y: 8 }}
+        transition={spring}>
+        <div className="shell-core">
+          <div className="dialog-head">
+            <div>
+              <h2 id="voice-title">Voice settings</h2>
+              <p>Choose how ATLAS sounds</p>
+            </div>
+            <button className="icon-btn" onClick={onClose} aria-label="Close"><X size={16} /></button>
           </div>
-          <button onClick={onClose} style={{ background:'transparent', border:'none', color:'rgba(255,255,255,0.4)', fontSize:20, cursor:'pointer' }}>✕</button>
-        </div>
 
-        {/* Voice selector */}
-        <div style={{ marginBottom:16 }}>
-          <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', letterSpacing:'0.1em', marginBottom:8, fontFamily:"'Space Mono',monospace" }}>VOICE</div>
-          <select value={sel} onChange={e => setSel(e.target.value)}
-            style={{ width:'100%', background:'#1a1d2e', border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, color:'white', fontSize:13, padding:'10px 12px', outline:'none', cursor:'pointer' }}>
-            <option value="">● Auto — Daniel / UK Male</option>
-            {enVoices.length > 0 && <optgroup label="English Voices">
-              {enVoices.map(v => <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>)}
-            </optgroup>}
-            {otherVoices.length > 0 && <optgroup label="Other Languages">
-              {otherVoices.map(v => <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>)}
-            </optgroup>}
-          </select>
-        </div>
+          <div className="field">
+            <label htmlFor="voice-select">Voice</label>
+            <select id="voice-select" value={sel} onChange={e => setSel(e.target.value)}>
+              <option value="">Auto (Daniel, UK male)</option>
+              {enVoices.length > 0 && <optgroup label="English">
+                {enVoices.map(v => <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>)}
+              </optgroup>}
+              {otherVoices.length > 0 && <optgroup label="Other languages">
+                {otherVoices.map(v => <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>)}
+              </optgroup>}
+            </select>
+          </div>
 
-        {/* Speed */}
-        <div style={{ marginBottom:14 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
-            <span style={{ fontSize:11, color:'rgba(255,255,255,0.45)', letterSpacing:'0.1em', fontFamily:"'Space Mono',monospace" }}>SPEED</span>
-            <span style={{ fontSize:12, color:'#00c8ff', fontFamily:"'Orbitron',monospace" }}>{rate.toFixed(2)}x</span>
+          <div className="field">
+            <div className="field-row">
+              <label htmlFor="voice-rate">Speed</label>
+              <span className="field-value">{rate.toFixed(2)}×</span>
+            </div>
+            <input id="voice-rate" type="range" min="0.5" max="1.5" step="0.05" value={rate} onChange={e => setRate(parseFloat(e.target.value))} />
+            <div className="field-scale"><span>Slower</span><span>Faster</span></div>
           </div>
-          <input type="range" min="0.5" max="1.5" step="0.05" value={rate} onChange={e => setRate(parseFloat(e.target.value))}
-            style={{ width:'100%', accentColor:'#00c8ff', cursor:'pointer' }} />
-          <div style={{ display:'flex', justifyContent:'space-between', marginTop:4 }}>
-            <span style={{ fontSize:10, color:'rgba(255,255,255,0.2)' }}>Slow</span>
-            <span style={{ fontSize:10, color:'rgba(255,255,255,0.2)' }}>Fast</span>
-          </div>
-        </div>
 
-        {/* Pitch */}
-        <div style={{ marginBottom:20 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
-            <span style={{ fontSize:11, color:'rgba(255,255,255,0.45)', letterSpacing:'0.1em', fontFamily:"'Space Mono',monospace" }}>PITCH</span>
-            <span style={{ fontSize:12, color:'#00c8ff', fontFamily:"'Orbitron',monospace" }}>{pitch.toFixed(2)}</span>
+          <div className="field">
+            <div className="field-row">
+              <label htmlFor="voice-pitch">Pitch</label>
+              <span className="field-value">{pitch.toFixed(2)}</span>
+            </div>
+            <input id="voice-pitch" type="range" min="0.5" max="1.5" step="0.05" value={pitch} onChange={e => setPitch(parseFloat(e.target.value))} />
+            <div className="field-scale"><span>Lower</span><span>Higher</span></div>
           </div>
-          <input type="range" min="0.5" max="1.5" step="0.05" value={pitch} onChange={e => setPitch(parseFloat(e.target.value))}
-            style={{ width:'100%', accentColor:'#00c8ff', cursor:'pointer' }} />
-          <div style={{ display:'flex', justifyContent:'space-between', marginTop:4 }}>
-            <span style={{ fontSize:10, color:'rgba(255,255,255,0.2)' }}>Low</span>
-            <span style={{ fontSize:10, color:'rgba(255,255,255,0.2)' }}>High</span>
-          </div>
-        </div>
 
-        {/* Buttons */}
-        <div style={{ display:'flex', gap:10 }}>
-          <button onClick={preview} disabled={previewing}
-            style={{ flex:1, padding:'11px', borderRadius:10, background:'rgba(0,200,255,0.08)', border:'1px solid rgba(0,200,255,0.25)', color:'#00c8ff', fontSize:13, fontWeight:500, cursor:'pointer', transition:'all 0.15s' }}
-            onMouseEnter={e => e.currentTarget.style.background='rgba(0,200,255,0.15)'}
-            onMouseLeave={e => e.currentTarget.style.background='rgba(0,200,255,0.08)'}
-          >
-            {previewing ? '▶ Playing…' : '▶ Preview Voice'}
-          </button>
-          <button onClick={save}
-            style={{ flex:1, padding:'11px', borderRadius:10, background:'#00c8ff', border:'none', color:'#0d0f16', fontSize:13, fontWeight:700, cursor:'pointer', transition:'all 0.15s' }}
-            onMouseEnter={e => e.currentTarget.style.background='#33d6ff'}
-            onMouseLeave={e => e.currentTarget.style.background='#00c8ff'}
-          >
-            Save Voice
-          </button>
+          <div className="dialog-actions">
+            <button className="btn" onClick={preview} disabled={previewing}>
+              <Play size={14} weight="fill" />{previewing ? 'Playing…' : 'Preview'}
+            </button>
+            <button className="btn primary" onClick={save}>Save voice</button>
+          </div>
         </div>
       </motion.div>
     </motion.div>
   );
 }
 
-// ─── Quick prompts in sidebar ─────────────────────────────────────────────────
+// ─── Quick prompts ───────────────────────────────────────────────────────────
 const QUICK_PROMPTS = [
   {
-    icon: '🏠',
+    Icon: House,
     label: "Daddy's Home",
     text: "Daddy's home",
     response: "Welcome back, Mario. Systems are live, context is loaded. What shall we work on today?",
     canned: true,
   },
-  {
-    icon: '✅',
-    label: "My To-Do List",
-    text: "Show me everything on my to-do list, overdue items first. Be concise.",
-  },
-  {
-    icon: '📬',
-    label: "My Emails",
-    text: "What does my inbox look like? Summarise the most important emails and flag anything urgent.",
-  },
-  {
-    icon: '📅',
-    label: "Today's Schedule",
-    text: "Walk me through today's schedule. What do I have on and when?",
-  },
+  { Icon: CheckSquare,   label: 'My to-do list',    text: 'Show me everything on my to-do list, overdue items first. Be concise.' },
+  { Icon: Tray,          label: 'My emails',        text: 'What does my inbox look like? Summarise the most important emails and flag anything urgent.' },
+  { Icon: CalendarBlank, label: "Today's schedule", text: "Walk me through today's schedule. What do I have on and when?" },
 ];
 
-// ─── Modes, agents, prompt chips ──────────────────────────────────────────────
+// ─── Modes, agents, prompt chips ─────────────────────────────────────────────
 const AGENTS = [
-  { id: 'studio-manager',  name: 'Studio Manager',  sub: 'LIA',        icon: '🗂️' },
-  { id: 'junior-designer', name: 'Junior Designer', sub: 'Higgsfield', icon: '🎨' },
-  { id: 'growth',          name: 'Growth',          sub: null,         icon: '📈' },
+  { id: 'studio-manager',  name: 'Studio Manager',  sub: 'LIA',        Icon: Kanban },
+  { id: 'junior-designer', name: 'Junior Designer', sub: 'Higgsfield', Icon: PaintBrush },
+  { id: 'growth',          name: 'Growth',          sub: null,         Icon: TrendUp },
 ];
 
 const BUSINESS_PROMPT_CHIPS = [
-  { label: 'Draft outreach email',   agent: 'growth',          text: 'Draft an outreach email for a potential new client.' },
-  { label: 'Shot list for client',   agent: 'junior-designer', text: 'Put together a shot list for an upcoming client shoot.' },
+  { label: 'Draft outreach email', agent: 'growth',          text: 'Draft an outreach email for a potential new client.' },
+  { label: 'Shot list for client', agent: 'junior-designer', text: 'Put together a shot list for an upcoming client shoot.' },
 ];
 const PERSONAL_PROMPT_CHIPS = [
   { label: 'Write a LinkedIn post', text: 'Write me a LinkedIn post.' },
 ];
 
-// ─── Stat cards config — placeholder until real APIs are wired ───────────────
-function getStatCards(mode) {
-  const NOT_CONNECTED = 'Not connected yet';
+// ─── Connections — placeholder until real APIs are wired ─────────────────────
+const NOT_CONNECTED = 'Not connected';
+const GMAIL = 'https://mail.google.com';
+const TODOIST = 'https://todoist.com/app';
+const GCAL = 'https://calendar.google.com';
+const FORECAST = 'https://weather.com/en-GB/weather/today/l/London+England+GB';
 
+function getConnections(mode) {
   if (mode === 'business') {
     return [
-      { id:'blinc-email',    icon:'📬', stat:'—', statLabel:'unread emails (Blinc)',   detail:NOT_CONNECTED,             link:'https://mail.google.com',     linkLabel:'Open Gmail',    color:'#ffa502', prompt:"What does my Blinc inbox look like?" },
-      { id:'blinc-tasks',    icon:'✅', stat:'—', statLabel:'tasks (Blinc)',           detail:NOT_CONNECTED,             link:'https://todoist.com/app',     linkLabel:'Open Todoist',  color:'#ff4757', prompt:"What Blinc tasks are overdue?" },
-      { id:'blinc-calendar', icon:'📅', stat:'—', statLabel:'meetings today',          detail:NOT_CONNECTED,             link:'https://calendar.google.com', linkLabel:'Open Calendar', color:'#00c8ff', prompt:"Walk me through today's Blinc schedule." },
-      { id:'weather',        icon:'🌤️', stat:null, statLabel:'London',                detail:'Tap to load',             link:'https://weather.com/en-GB/weather/today/l/London+England+GB', linkLabel:'Full forecast', color:'#2ed573', weather:true, prompt:"What's the weather like in London today?" },
-      { id:'blinc-invoices', icon:'💷', stat:'—', statLabel:'overdue invoices',        detail:`${NOT_CONNECTED} — Xero`, link:null,                          linkLabel:null,            color:'#ff6b81', prompt:"Are there any overdue invoices I should chase?" },
-      { id:'blinc-projects', icon:'📁', stat:'—', statLabel:'live client projects',    detail:NOT_CONNECTED,             link:null,                          linkLabel:null,            color:'#a29bfe', prompt:"What client projects are currently live?" },
+      { id: 'blinc-email',    Icon: EnvelopeSimple, label: 'Blinc inbox',      detail: NOT_CONNECTED,          link: GMAIL,    linkLabel: 'Open Gmail',    prompt: 'What does my Blinc inbox look like?' },
+      { id: 'blinc-tasks',    Icon: CheckSquare,    label: 'Blinc tasks',      detail: NOT_CONNECTED,          link: TODOIST,  linkLabel: 'Open Todoist',  prompt: 'What Blinc tasks are overdue?' },
+      { id: 'blinc-calendar', Icon: CalendarBlank,  label: 'Meetings today',   detail: NOT_CONNECTED,          link: GCAL,     linkLabel: 'Open Calendar', prompt: "Walk me through today's Blinc schedule." },
+      { id: 'weather',        weather: true,        label: 'London',                                           link: FORECAST, linkLabel: 'Full forecast', prompt: "What's the weather like in London today?" },
+      { id: 'blinc-invoices', Icon: CurrencyGbp,    label: 'Overdue invoices', detail: `${NOT_CONNECTED} · Xero`, link: null,  linkLabel: null,            prompt: 'Are there any overdue invoices I should chase?' },
+      { id: 'blinc-projects', Icon: FolderSimple,   label: 'Client projects',  detail: NOT_CONNECTED,          link: null,     linkLabel: null,            prompt: 'What client projects are currently live?' },
     ];
   }
-
   return [
-    { id:'personal-email',    icon:'📬', stat:'—', statLabel:'unread emails (personal)', detail:NOT_CONNECTED, link:'https://mail.google.com',     linkLabel:'Open Gmail',    color:'#ffa502', prompt:"What does my personal inbox look like?" },
-    { id:'personal-tasks',    icon:'✅', stat:'—', statLabel:'tasks (personal)',         detail:NOT_CONNECTED, link:'https://todoist.com/app',     linkLabel:'Open Todoist',  color:'#ff4757', prompt:"What's on my personal to-do list?" },
-    { id:'personal-calendar', icon:'📅', stat:'—', statLabel:'meetings today',           detail:NOT_CONNECTED, link:'https://calendar.google.com', linkLabel:'Open Calendar', color:'#00c8ff', prompt:"What's on my personal calendar today?" },
-    { id:'weather',           icon:'🌤️', stat:null, statLabel:'London',                 detail:'Tap to load', link:'https://weather.com/en-GB/weather/today/l/London+England+GB', linkLabel:'Full forecast', color:'#2ed573', weather:true, prompt:"What's the weather like in London today?" },
-    { id:'personal-projects', icon:'📁', stat:'—', statLabel:'live personal projects',   detail:'Long Story Short · Project Ridgeway', link:null, linkLabel:null, color:'#a29bfe', prompt:"What's the latest on Long Story Short and Project Ridgeway?" },
+    { id: 'personal-email',    Icon: EnvelopeSimple, label: 'Inbox',             detail: NOT_CONNECTED, link: GMAIL,    linkLabel: 'Open Gmail',    prompt: 'What does my personal inbox look like?' },
+    { id: 'personal-tasks',    Icon: CheckSquare,    label: 'Tasks',             detail: NOT_CONNECTED, link: TODOIST,  linkLabel: 'Open Todoist',  prompt: "What's on my personal to-do list?" },
+    { id: 'personal-calendar', Icon: CalendarBlank,  label: 'Meetings today',    detail: NOT_CONNECTED, link: GCAL,     linkLabel: 'Open Calendar', prompt: "What's on my personal calendar today?" },
+    { id: 'weather',           weather: true,        label: 'London',                                   link: FORECAST, linkLabel: 'Full forecast', prompt: "What's the weather like in London today?" },
+    { id: 'personal-projects', Icon: FolderSimple,   label: 'Personal projects', detail: 'Long Story Short · Project Ridgeway', link: null, linkLabel: null, prompt: "What's the latest on Long Story Short and Project Ridgeway?" },
   ];
 }
 
-// ─── Weather stat card inner ──────────────────────────────────────────────────
-function WeatherStat() {
-  const [w, setW] = useState(null);
-  useEffect(() => { fetch('/api/weather?city=London').then(r=>r.json()).then(setW).catch(()=>{}); }, []);
-  const icon = d => { const s=(d||'').toLowerCase(); return s.includes('sun')||s.includes('clear')?'☀️':s.includes('rain')||s.includes('shower')?'🌧️':s.includes('snow')?'❄️':s.includes('cloud')||s.includes('overcast')?'☁️':'🌤️'; };
-  if (!w) return { stat:'...', detail:'Loading…', icon_char:'🌤️' };
-  return { stat:`${w.temp_c}°`, detail:`${w.description} · Feels ${w.feels_like_c}°`, icon_char: icon(w.description) };
+function weatherIcon(desc) {
+  const s = (desc || '').toLowerCase();
+  if (s.includes('sun') || s.includes('clear')) return Sun;
+  if (s.includes('rain') || s.includes('shower') || s.includes('drizzle')) return CloudRain;
+  if (s.includes('snow')) return Snowflake;
+  if (s.includes('cloud') || s.includes('overcast')) return Cloud;
+  return CloudSun;
 }
 
-// ─── Stat Card ─────────────────────────────────────────────────────────────────
-function StatCard({ card, onAsk, weatherData }) {
-  const isWeather = card.weather;
-  const stat   = isWeather ? weatherData?.stat   : card.stat;
-  const detail = isWeather ? weatherData?.detail : card.detail;
+const fmtTime = d => d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
+// ─── Connection row ──────────────────────────────────────────────────────────
+function ConnectionRow({ row, onAsk, weather }) {
+  let Icon = row.Icon, detail = row.detail, value = null, on = false;
+  if (row.weather) {
+    Icon = weatherIcon(weather?.description);
+    if (weather === undefined) detail = 'Loading…';
+    else if (!weather)         detail = 'Weather unavailable';
+    else { on = true; value = `${weather.temp_c}°`; detail = `${weather.description} · feels ${weather.feels_like_c}°`; }
+  }
   return (
-    <motion.div
-      whileHover={{ scale:1.02, borderColor:'rgba(255,255,255,0.16)', background:'rgba(255,255,255,0.055)' }}
-      whileTap={{ scale:0.98 }}
-      style={{ background:'rgba(255,255,255,0.035)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:18, padding:'18px 20px', display:'flex', flexDirection:'column', gap:2, position:'relative', overflow:'hidden', cursor:'default', transition:'background 0.2s, border-color 0.2s' }}
-    >
-      {/* Top row */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10 }}>
-        <span style={{ width:34, height:34, borderRadius:10, background:`${card.color}18`, border:`1px solid ${card.color}30`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}>{isWeather && weatherData?.icon_char ? weatherData.icon_char : card.icon}</span>
-        <div style={{ display:'flex', gap:6 }}>
-          {/* Ask ATLAS button */}
-          <button onClick={() => onAsk(card.prompt)}
-            title="Ask ATLAS"
-            style={{ width:26, height:26, borderRadius:6, border:'1px solid rgba(255,255,255,0.1)', background:'transparent', color:'rgba(255,255,255,0.35)', fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s' }}
-            onMouseEnter={e => { e.currentTarget.style.background='rgba(0,200,255,0.15)'; e.currentTarget.style.color='#00c8ff'; }}
-            onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='rgba(255,255,255,0.35)'; }}
-          >◈</button>
-          {/* External link button */}
-          {card.link && (
-            <a href={card.link} target="_blank" rel="noopener noreferrer"
-              title={card.linkLabel}
-              style={{ width:26, height:26, borderRadius:6, border:'1px solid rgba(255,255,255,0.1)', background:'transparent', color:'rgba(255,255,255,0.35)', fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', textDecoration:'none', transition:'all 0.15s' }}
-              onMouseEnter={e => { e.currentTarget.style.background='rgba(255,255,255,0.1)'; e.currentTarget.style.color='white'; }}
-              onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='rgba(255,255,255,0.35)'; }}
-            >↗</a>
-          )}
-        </div>
+    <motion.li className="sys-row" variants={rise}>
+      <span className="sys-icon" aria-hidden="true">
+        <Icon size={18} weight="light" />
+        <span className={`sys-dot${on ? ' on' : ''}`} />
+      </span>
+      <div style={{ minWidth: 0 }}>
+        <div className="sys-label">{row.label}{value && <span className="sys-value">{value}</span>}</div>
+        <div className="sys-detail">{detail}</div>
       </div>
-
-      {/* Stat */}
-      <div style={{ fontFamily:"'Orbitron',monospace", fontSize: typeof stat === 'string' && stat.includes('°') ? 32 : 36, fontWeight:700, color:card.color, lineHeight:1, letterSpacing:'-0.02em' }}>
-        {stat ?? '—'}
+      <div className="sys-actions">
+        <button className="icon-btn sm" onClick={() => onAsk(row.prompt)} title="Ask ATLAS" aria-label={`Ask ATLAS about ${row.label}`}>
+          <Sparkle size={16} weight="light" />
+        </button>
+        {row.link && (
+          <a className="icon-btn sm" href={row.link} target="_blank" rel="noopener noreferrer" title={row.linkLabel} aria-label={row.linkLabel}>
+            <ArrowUpRight size={16} weight="light" />
+          </a>
+        )}
       </div>
-      <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', fontWeight:500, marginTop:2 }}>{card.statLabel}</div>
-
-      {/* Detail */}
-      <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginTop:6, lineHeight:1.4, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-        {detail}
-      </div>
-
-      {/* Colour accent bar */}
-      <div style={{ position:'absolute', bottom:0, left:0, right:0, height:2, background:`linear-gradient(90deg, ${card.color}60, transparent)` }} />
-    </motion.div>
+    </motion.li>
   );
 }
 
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
-function Sidebar({ data, onPrompt, open, onClose }) {
-  const [now, setNow] = useState(new Date());
-  useEffect(() => { const t = setInterval(()=>setNow(new Date()),60000); return ()=>clearInterval(t); }, []);
-
+// ─── Today panel ─────────────────────────────────────────────────────────────
+function TodayPanel({ data, now, mode, onAsk, weather }) {
+  const events = data?.events || [];
   return (
-    <div className={`atlas-sidebar${open ? ' open' : ''}`} style={{ width:220, flexShrink:0, height:'100%', background:'#0a0c14', borderRight:'1px solid rgba(255,255,255,0.06)', display:'flex', flexDirection:'column' }}>
-      {/* Logo */}
-      <div style={{ padding:'20px 18px 16px', borderBottom:'1px solid rgba(255,255,255,0.06)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <div style={{ width:30, height:30, borderRadius:8, background:'linear-gradient(135deg,#00c8ff,#4d7ef7)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700, flexShrink:0, boxShadow:'0 0 14px rgba(0,200,255,0.3)' }}>◈</div>
-          <div>
-            <div style={{ fontFamily:"'Orbitron',monospace", fontSize:13, fontWeight:700, letterSpacing:'0.18em', color:'white' }}>ATLAS</div>
-            <div style={{ fontSize:9, color:'rgba(255,255,255,0.25)', letterSpacing:'0.1em' }}>SECOND BRAIN</div>
-          </div>
-        </div>
-        <button onClick={onClose} className="atlas-sidebar-close" style={{ display:'none', background:'transparent', border:'none', color:'rgba(255,255,255,0.4)', fontSize:18, cursor:'pointer', flexShrink:0 }}>✕</button>
-      </div>
-
-      {/* Quick Prompts */}
-      <div style={{ padding:'16px 14px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-        <div style={{ fontSize:9, color:'rgba(255,255,255,0.25)', letterSpacing:'0.15em', marginBottom:10, fontFamily:"'Space Mono',monospace" }}>QUICK PROMPTS</div>
-        {QUICK_PROMPTS.map((p, i) => (
-          <motion.button key={i} onClick={() => onPrompt(p)}
-            whileHover={{ scale:1.01, x:2 }}
-            whileTap={{ scale:0.98 }}
-            style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'10px 12px', marginBottom:6, borderRadius:10, border:'1px solid rgba(255,255,255,0.07)', background:'rgba(255,255,255,0.03)', cursor:'pointer', textAlign:'left', transition:'all 0.15s' }}
-            onMouseEnter={e => { e.currentTarget.style.background='rgba(0,200,255,0.08)'; e.currentTarget.style.borderColor='rgba(0,200,255,0.2)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background='rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.07)'; }}
-          >
-            <span style={{ fontSize:16, flexShrink:0 }}>{p.icon}</span>
-            <span style={{ fontSize:12, color:'rgba(255,255,255,0.7)', fontWeight:500 }}>{p.label}</span>
-          </motion.button>
-        ))}
-      </div>
-
-      {/* Schedule preview */}
-      <div style={{ padding:'14px 14px', flex:1, overflowY:'auto' }}>
-        <div style={{ fontSize:9, color:'rgba(255,255,255,0.25)', letterSpacing:'0.15em', marginBottom:10, fontFamily:"'Space Mono',monospace" }}>TODAY</div>
-        {(data?.events||[]).length === 0 ? (
-          <div style={{ fontSize:12, color:'rgba(255,255,255,0.25)' }}>No meetings scheduled</div>
-        ) : (data?.events||[]).map((e,i) => {
-          const s = new Date(e.start), n = new Date(), en = new Date(e.end);
-          const live = s<=n&&en>=n;
-          return (
-            <div key={i} style={{ marginBottom:8, padding:'8px 10px', background:live?'rgba(0,200,255,0.07)':'rgba(255,255,255,0.03)', borderRadius:8, border:`1px solid ${live?'rgba(0,200,255,0.18)':'rgba(255,255,255,0.05)'}` }}>
-              <div style={{ fontSize:11, color:live?'#00c8ff':'rgba(255,255,255,0.75)', fontWeight:live?600:400, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{e.title}</div>
-              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:2 }}>{s.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})} · {e.location}</div>
+    <motion.aside className="today shell" aria-label="Today" variants={rise}>
+      <motion.div className="shell-core" variants={stagger}>
+        <div className="today-grid">
+          <section className="panel-section">
+            <div className="panel-head">
+              <h2>Today</h2>
+              <span className="panel-meta">{now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
             </div>
-          );
-        })}
-      </div>
+            {data?.mock && <p className="sample-note">Sample schedule. Calendar not connected yet.</p>}
+            {events.length === 0 ? (
+              <p className="empty">Nothing in the diary today.</p>
+            ) : (
+              <ul className="timeline">
+                {events.map(e => {
+                  const s = new Date(e.start), en = new Date(e.end);
+                  const live = s <= now && en >= now;
+                  const past = en < now;
+                  return (
+                    <motion.li key={e.id} variants={rise} className={`tl-item${live ? ' live' : ''}${past ? ' past' : ''}`}>
+                      <span className="tl-dot" />
+                      <span className="tl-time">{fmtTime(s)}</span>
+                      <div style={{ minWidth: 0 }}>
+                        <div className="tl-title">{e.title}{live && <span className="now-tag">Now</span>}</div>
+                        {e.location && <div className="tl-where">{e.location}</div>}
+                      </div>
+                    </motion.li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
 
-      {/* Clock */}
-      <div style={{ padding:'14px 16px', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
-        <div style={{ fontFamily:"'Orbitron',monospace", fontSize:20, fontWeight:700, color:'white' }}>
-          {now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
+          <section className="panel-section">
+            <div className="panel-head">
+              <h2>Connections</h2>
+              <span className="panel-meta">{mode === 'business' ? 'Blinc' : 'Personal'}</span>
+            </div>
+            <ul className="systems">
+              {getConnections(mode).map(r => <ConnectionRow key={r.id} row={r} onAsk={onAsk} weather={r.weather ? weather : null} />)}
+            </ul>
+          </section>
         </div>
-        <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginTop:2 }}>
-          {now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}
-        </div>
-      </div>
+      </motion.div>
+    </motion.aside>
+  );
+}
+
+// ─── Mode switch with a gliding indicator ────────────────────────────────────
+function ModeSwitch({ id, mode, setMode }) {
+  return (
+    <div className="segmented" role="group" aria-label="Mode">
+      {[['personal', 'Personal'], ['business', 'Blinc']].map(([value, label]) => (
+        <button key={value} aria-pressed={mode === value} onClick={() => setMode(value)}>
+          {mode === value && <motion.span layoutId={`seg-${id}`} className="seg-indicator" transition={spring} />}
+          <span className="seg-label">{label}</span>
+        </button>
+      ))}
     </div>
   );
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Rail ────────────────────────────────────────────────────────────────────
+function Rail({ open, onClose, onPrompt, mode, setMode, activeAgent, setActiveAgent }) {
+  const [hover, setHover] = useState(null);
+  return (
+    <motion.nav className={`rail shell${open ? ' open' : ''}`} aria-label="ATLAS" variants={fade}>
+      <div className="shell-core">
+        <div className="rail-head">
+          <span className="brand-name">ATLAS</span>
+          <button className="icon-btn" onClick={onClose} aria-label="Close menu"><X size={18} weight="light" /></button>
+        </div>
+
+        <LayoutGroup id="rail">
+          <motion.div className="rail-body" variants={stagger} onMouseLeave={() => setHover(null)}>
+            <div className="rail-group segmented-wrap">
+              <div className="shell pill-shell"><div className="shell-core"><ModeSwitch id="rail" mode={mode} setMode={setMode} /></div></div>
+            </div>
+
+            <div className="rail-group">
+              <span className="group-title">Protocols</span>
+              <div className="cmd-list">
+                {QUICK_PROMPTS.map(p => (
+                  <motion.button key={p.label} className="cmd" variants={rise}
+                    onClick={() => onPrompt(p)} onMouseEnter={() => setHover(p.label)} onFocus={() => setHover(p.label)}>
+                    {hover === p.label && <motion.span layoutId="rail-hover" className="hover-pill" transition={spring} />}
+                    <p.Icon size={19} weight="light" /><span className="cmd-text">{p.label}</span>
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+
+            <AnimatePresence initial={false}>
+              {mode === 'business' && (
+                <motion.div className="rail-group" key="agents"
+                  initial={{ opacity: 0, y: 10, filter: 'blur(6px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, y: 6, filter: 'blur(6px)' }} transition={{ ...glide, ...unblur }}>
+                  <span className="group-title">Agents</span>
+                  <div className="cmd-list">
+                    {AGENTS.map(a => (
+                      <button key={a.id} className="cmd" aria-pressed={activeAgent === a.id}
+                        onClick={() => setActiveAgent(a.id)} onMouseEnter={() => setHover(a.id)} onFocus={() => setHover(a.id)}>
+                        {activeAgent === a.id && <motion.span layoutId="agent-active" className="active-pill" transition={spring} />}
+                        {hover === a.id && activeAgent !== a.id && <motion.span layoutId="rail-hover" className="hover-pill" transition={spring} />}
+                        <a.Icon size={19} weight="light" /><span className="cmd-text">{a.name}</span>
+                        {a.sub && <span className="cmd-sub">{a.sub}</span>}
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        </LayoutGroup>
+      </div>
+    </motion.nav>
+  );
+}
+
+const STATUS = { idle: 'Melo is ready', listening: 'Melo is listening', thinking: 'Melo is thinking', speaking: 'Melo is speaking' };
+
+// ─── Main ────────────────────────────────────────────────────────────────────
 export default function MainView({ data }) {
   const [orbState, setOrbState]   = useState('idle');
   const [response, setResponse]   = useState('');
+  const [responseError, setResponseError] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState('');
-  const [activeCard, setActiveCard] = useState(null);
   const [showVoice, setShowVoice] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [inputText, setInputText] = useState('');
   const [mode, setMode] = useState('personal'); // 'personal' | 'business' — business is Blinc-only for now
   const [activeAgent, setActiveAgent] = useState('studio-manager');
+  const [now, setNow] = useState(new Date());
+  const [weather, setWeather] = useState(undefined); // undefined = loading, null = failed
+  const [bootKey, setBootKey] = useState(0);
+  const [replyKey, setReplyKey] = useState(0);
+  const [pokeKey, setPokeKey] = useState(0);
   const recRef    = useRef(null);
   const streamRef = useRef(false);
+  const inputRef  = useRef(null);
 
   const events  = data?.events  || [];
   const tasks   = data?.tasks   || [];
   const threads = data?.threads || [];
 
-  const hour = new Date().getHours();
-  const greeting = hour<12 ? 'Good Morning' : hour<17 ? 'Good Afternoon' : 'Good Evening';
+  useEffect(() => { const t = setInterval(() => setNow(new Date()), 30000); return () => clearInterval(t); }, []);
 
-  const statCards = getStatCards(mode);
-  const promptChips = mode === 'business' ? BUSINESS_PROMPT_CHIPS : PERSONAL_PROMPT_CHIPS;
-
-  // Weather data for weather card
-  const [weatherData, setWeatherData] = useState(null);
   useEffect(() => {
-    fetch('/api/weather?city=London').then(r=>r.json()).then(w => {
-      const icon = d => { const s=(d||'').toLowerCase(); return s.includes('sun')||s.includes('clear')?'☀️':s.includes('rain')||s.includes('shower')?'🌧️':s.includes('snow')?'❄️':s.includes('cloud')?'☁️':'🌤️'; };
-      setWeatherData({ stat:`${w.temp_c}°`, detail:`${w.description} · Feels ${w.feels_like_c}°`, icon_char:icon(w.description) });
-    }).catch(()=>{});
+    fetch('/api/weather?city=London')
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(w => setWeather(w?.temp_c ? w : null))
+      .catch(() => setWeather(null));
   }, []);
 
-  // ElevenLabs voice output
+  const hour = now.getHours();
+  const greeting = `${hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'}, Mario`;
+  const promptChips = mode === 'business' ? BUSINESS_PROMPT_CHIPS : PERSONAL_PROMPT_CHIPS;
+  const agentName = AGENTS.find(a => a.id === activeAgent)?.name;
+
+  // Voice output (ElevenLabs), routed through an analyser so the core can read the real voice
   const audioRef      = useRef(null);
   const audioUnlocked = useRef(false);
+  const audioCtxRef   = useRef(null);
+  const analyserRef   = useRef(null);
 
   // Unlock browser audio on first interaction
   const unlockAudio = useCallback(() => {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC && !audioCtxRef.current) {
+      try {
+        const ctx = new AC();
+        const an = ctx.createAnalyser();
+        an.fftSize = 128;
+        an.smoothingTimeConstant = 0.72;
+        an.connect(ctx.destination);
+        audioCtxRef.current = ctx;
+        analyserRef.current = an;
+      } catch { /* analyser is optional */ }
+    }
+    audioCtxRef.current?.resume?.().catch(() => {});
     if (audioUnlocked.current) return;
     const a = new Audio();
     a.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
@@ -399,6 +454,13 @@ export default function MainView({ data }) {
       audioRef.current = audio;
       audio.src = url;
 
+      // Only route through Web Audio when the context is running; otherwise the
+      // element would play into a suspended graph and be silent.
+      const ctx = audioCtxRef.current;
+      if (ctx && ctx.state === 'running' && analyserRef.current) {
+        try { ctx.createMediaElementSource(audio).connect(analyserRef.current); } catch { /* plays directly */ }
+      }
+
       audio.onended = () => { setOrbState('idle'); URL.revokeObjectURL(url); audioRef.current = null; };
       audio.onerror = (e) => { console.error('Audio error:', e); setOrbState('idle'); URL.revokeObjectURL(url); };
 
@@ -417,10 +479,11 @@ export default function MainView({ data }) {
   }, [unlockAudio]);
 
   // Send to ATLAS API
-  const sendToAtlas = useCallback(async (text, cardId=null, agentOverride=null) => {
+  const sendToAtlas = useCallback(async (text, agentOverride=null) => {
     if (streamRef.current) return;
-    setActiveCard(cardId);
+    setReplyKey(k => k + 1);
     setResponse('');
+    setResponseError(false);
     setOrbState('thinking');
     setStreaming(true);
     streamRef.current = true;
@@ -429,7 +492,7 @@ export default function MainView({ data }) {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({
           messages:[{role:'user',content:text}],
-          context:{events,tasks,threads},
+          context:{events,tasks,threads,mock:!!data?.mock},
           mode,
           agent: mode === 'business' ? (agentOverride || activeAgent) : null,
         }),
@@ -447,6 +510,7 @@ export default function MainView({ data }) {
           try {
             const p = JSON.parse(line.slice(6));
             if (p.done) break;
+            if (p.error) throw new Error(p.error);
             if (p.text) {
               if (first) { setOrbState('speaking'); first=false; }
               setResponse(prev=>prev+p.text);
@@ -457,22 +521,25 @@ export default function MainView({ data }) {
       }
       setStreaming(false);
       if (full) speak(full.slice(0,500));
-      else { setOrbState('idle'); setActiveCard(null); }
+      else setOrbState('idle');
     } catch {
-      setResponse('Could not reach ATLAS. Check server connection.');
+      setResponseError(true);
+      setResponse("Couldn't reach ATLAS. Check the server is running, then try again.");
       setStreaming(false); setOrbState('idle');
     } finally { streamRef.current=false; }
   }, [events,tasks,threads,speak,mode,activeAgent]);
 
-  // Handle quick prompt (sidebar)
   const handleQuickPrompt = useCallback(promptObj => {
     unlockAudio();
     setSidebarOpen(false);
     if (promptObj.canned) {
+      setBootKey(k => k + 1);
+      setReplyKey(k => k + 1);
+      setResponseError(false);
       setResponse(promptObj.response);
       speak(promptObj.response);
     } else {
-      sendToAtlas(promptObj.text, null);
+      sendToAtlas(promptObj.text);
     }
   }, [sendToAtlas, speak, unlockAudio]);
 
@@ -488,212 +555,180 @@ export default function MainView({ data }) {
         else int+=e.results[i][0].transcript;
       }
       setTranscript(int||fin);
-      if (fin) { setTranscript(''); setListening(false); sendToAtlas(fin.trim(), null); }
+      if (fin) { setTranscript(''); setListening(false); sendToAtlas(fin.trim()); }
     };
     r.onend = () => setListening(false);
     recRef.current = r;
   }, [sendToAtlas]);
 
-  const toggleListen = () => {
+  const toggleListen = useCallback(() => {
     if (!recRef.current) return;
+    unlockAudio();
     if (listening) { recRef.current.stop(); setListening(false); setOrbState('idle'); }
     else { setTranscript(''); recRef.current.start(); setListening(true); setOrbState('listening'); }
+  }, [listening, unlockAudio]);
+
+  const reset = () => {
+    window.speechSynthesis?.cancel();
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    setOrbState('idle'); setResponse(''); setResponseError(false); setStreaming(false); streamRef.current=false;
   };
 
-  const reset = () => { window.speechSynthesis?.cancel(); setOrbState('idle'); setResponse(''); setActiveCard(null); setStreaming(false); streamRef.current=false; };
-
-  const handleSubmit = () => {
+  const handleSubmit = e => {
+    e?.preventDefault();
     const text = inputText.trim();
     if (!text) return;
     unlockAudio();
     setInputText('');
-    sendToAtlas(text, null);
+    sendToAtlas(text);
   };
 
+  // Keyboard: ⌘K or / focuses the composer, Esc closes the drawer or stops listening
+  useEffect(() => {
+    const onKey = e => {
+      const typing = ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName);
+      if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !typing)) {
+        e.preventDefault();
+        inputRef.current?.focus();
+      } else if (e.key === 'Escape' && !showVoice) {
+        if (sidebarOpen) setSidebarOpen(false);
+        else if (listening) toggleListen();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [sidebarOpen, listening, showVoice, toggleListen]);
+
+  const core = listening ? 'listening' : orbState;
+  const nextEvent = events.map(e => ({ ...e, s: new Date(e.start) })).find(e => e.s > now);
+  const daySummary = data?.mock
+    ? 'Ask anything, or run a protocol.'
+    : events.length === 0
+      ? 'Nothing in the diary today.'
+      : `${events.length} meeting${events.length === 1 ? '' : 's'} today. ${nextEvent ? `Next: ${nextEvent.title} at ${fmtTime(nextEvent.s)}.` : 'Nothing else coming up.'}`;
+  const showReply = streaming || !!response;
+  const replyFrom = mode === 'business' ? agentName : 'ATLAS';
+
   return (
-    <div style={{ width:'100vw', height:'100vh', display:'flex', overflow:'hidden', background:'#0d0f16' }}>
-      <Sidebar data={data} onPrompt={handleQuickPrompt} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
-      {/* Mobile backdrop, closes sidebar on tap outside */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <motion.div
-            className="atlas-backdrop"
-            initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-            onClick={() => setSidebarOpen(false)}
-            style={{ display:'none', position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:140 }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Main */}
-      <div style={{ flex:1, display:'flex', flexDirection:'column', position:'relative', overflow:'hidden', minWidth:0 }}>
-
-        {/* Ambient glow */}
-        <div style={{ position:'absolute', top:'-5%', left:'40%', transform:'translateX(-50%)', width:600, height:400, background:'radial-gradient(ellipse,rgba(0,180,255,0.07) 0%,rgba(0,80,200,0.03) 40%,transparent 70%)', pointerEvents:'none', filter:'blur(30px)' }} />
-
-        {/* Voice settings modal */}
-        <AnimatePresence>
-          {showVoice && <VoiceSettings onClose={() => setShowVoice(false)} />}
-        </AnimatePresence>
-
-        {/* Top bar */}
-        <div style={{ flexShrink:0, height:52, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 16px 0 12px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-          <button onClick={() => setSidebarOpen(true)} className="atlas-hamburger" title="Open menu"
-            style={{ display:'none', width:36, height:36, borderRadius:8, border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.04)', color:'rgba(255,255,255,0.7)', fontSize:16, cursor:'pointer', alignItems:'center', justifyContent:'center', flexShrink:0 }}>☰</button>
-          <div style={{ display:'flex', gap:12, alignItems:'center' }}>
-            <div style={{ width:32, height:32, borderRadius:'50%', background:'linear-gradient(135deg,#00c8ff,#4d7ef7)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700 }}>M</div>
+    <MotionConfig reducedMotion="user">
+      <motion.div className="atlas" initial="hidden" animate="show" variants={stagger}>
+        <motion.header className="islands" variants={rise}>
+          <div className="brand">
+            <button className="icon-btn hamburger" onClick={() => setSidebarOpen(true)} aria-label="Open menu"><List size={20} weight="light" /></button>
+            <Melo size={28} mark />
+            <span className="brand-name">ATLAS</span>
           </div>
-        </div>
-
-        {/* Scrollable content */}
-        <div className="atlas-main-content" style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', alignItems:'center', padding:'32px 40px 24px' }}>
-
-          {/* Orb + greeting */}
-          <motion.div initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} transition={{ duration:0.5 }}
-            style={{ display:'flex', flexDirection:'column', alignItems:'center', marginBottom:24 }}>
-            <TalkingOrb state={listening?'listening':orbState} />
-            <div style={{ marginTop:16, textAlign:'center' }}>
-              <div style={{ fontSize:11, fontWeight:500, letterSpacing:'0.28em', color:'rgba(255,255,255,0.35)', textTransform:'uppercase', marginBottom:6 }}>
-                {greeting.toUpperCase()}
-              </div>
-              <div style={{ fontSize:26, fontWeight:700, color:'white', letterSpacing:'-0.01em', lineHeight:1.2 }}>
-                What do you need today, Mario?
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Mode toggle: Personal / Business */}
-          <div style={{ display:'flex', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:12, padding:4, marginBottom:mode==='business'?14:24, gap:4 }}>
-            {['personal','business'].map(m => (
-              <button key={m} onClick={() => setMode(m)}
-                style={{ padding:'8px 20px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, letterSpacing:'0.04em', textTransform:'capitalize',
-                  background: mode===m ? '#00c8ff' : 'transparent', color: mode===m ? '#0d0f16' : 'rgba(255,255,255,0.5)', transition:'background 0.2s, color 0.2s' }}>
-                {m === 'business' ? 'Business — Blinc' : 'Personal'}
+          <div className="island-mode shell pill-shell">
+            <div className="shell-core"><ModeSwitch id="top" mode={mode} setMode={setMode} /></div>
+          </div>
+          <div className="island-right shell pill-shell">
+            <div className="shell-core">
+              <span className="clock">{fmtTime(now)}</span>
+              <span className="clock-date">{now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+              <button className="icon-btn" onClick={() => setShowVoice(true)} title="Voice settings" aria-label="Voice settings">
+                <SlidersHorizontal size={18} weight="light" />
               </button>
-            ))}
+              <span className="avatar" aria-label="Mario">M</span>
+            </div>
           </div>
+        </motion.header>
 
-          {/* Agent selector — Business mode only */}
-          {mode === 'business' && (
-            <motion.div initial={{ opacity:0, y:-6 }} animate={{ opacity:1, y:0 }}
-              style={{ display:'flex', gap:8, marginBottom:24, flexWrap:'wrap', justifyContent:'center' }}>
-              {AGENTS.map(a => (
-                <button key={a.id} onClick={() => setActiveAgent(a.id)}
-                  style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 14px', borderRadius:20, cursor:'pointer',
-                    background: activeAgent===a.id ? 'rgba(0,200,255,0.12)' : 'rgba(255,255,255,0.04)',
-                    border: `1px solid ${activeAgent===a.id ? 'rgba(0,200,255,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                    color: activeAgent===a.id ? '#00c8ff' : 'rgba(255,255,255,0.55)', fontSize:12, fontWeight:600, transition:'all 0.15s' }}>
-                  <span style={{ fontSize:13 }}>{a.icon}</span>
-                  {a.name}{a.sub ? <span style={{ opacity:0.55, fontWeight:400 }}>· {a.sub}</span> : null}
-                </button>
-              ))}
-            </motion.div>
-          )}
+        <motion.div className="body" key={bootKey} initial="hidden" animate="show" variants={stagger}>
+          <Rail open={sidebarOpen} onClose={() => setSidebarOpen(false)} onPrompt={handleQuickPrompt}
+            mode={mode} setMode={setMode} activeAgent={activeAgent} setActiveAgent={setActiveAgent} />
+          {sidebarOpen && <div className="backdrop" onClick={() => setSidebarOpen(false)} />}
 
-          {/* Response */}
-          <AnimatePresence>
-            {response && (
-              <motion.div initial={{ opacity:0, y:8, scale:0.98 }} animate={{ opacity:1, y:0, scale:1 }} exit={{ opacity:0 }}
-                style={{ width:'100%', maxWidth:620, marginBottom:20, padding:'14px 18px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:14, fontSize:14, color:'rgba(255,255,255,0.88)', lineHeight:1.7, position:'relative' }}>
-                {mode === 'business' && (
-                  <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.1em', color:'#00c8ff', marginBottom:6, textTransform:'uppercase' }}>
-                    {AGENTS.find(a => a.id === activeAgent)?.name || 'ATLAS'}
+          <div className="workspace">
+            <main className="stage">
+              <motion.div className="stage-inner" variants={stagger}>
+                <div className="hero">
+                  <motion.div className="nest-tray" variants={{
+                    hidden: { opacity: 0, scale: 0.9, y: 12, filter: 'blur(14px)' },
+                    show:   { opacity: 1, scale: 1,   y: 0,  filter: 'blur(0px)', transition: { type: 'spring', stiffness: 90, damping: 15, ...unblur } },
+                  }}>
+                    <button type="button" className="nest" data-state={core} onClick={() => setPokeKey(k => k + 1)} aria-label="Poke Melo" title="Poke Melo">
+                      <Melo state={core} size={250} analyserRef={analyserRef} waveKey={bootKey} pokeKey={pokeKey}
+                        error={responseError} typing={!!inputText.trim() && !streaming} mode={mode} />
+                    </button>
+                  </motion.div>
+                  <motion.h1 className="greeting" variants={rise}>{greeting}</motion.h1>
+                  <motion.div variants={rise}>
+                    <div className={`status${core !== 'idle' ? ' live' : ''}`} aria-live="polite">
+                      <span className="status-dot" />{STATUS[core]}
+                    </div>
+                  </motion.div>
+                  <motion.p className="summary" variants={rise}>{daySummary}</motion.p>
+                </div>
+
+                <AnimatePresence mode="popLayout">
+                  {showReply && (
+                    <motion.section key={replyKey} className="console shell" aria-label={`Reply from ${replyFrom}`} {...settle}>
+                      <div className="shell-core">
+                        <div className="console-head">
+                          <Melo size={22} mark />
+                          <span className="console-from">{replyFrom}</span>
+                          <button className="icon-btn sm" onClick={reset} aria-label="Dismiss reply"><X size={15} weight="light" /></button>
+                        </div>
+                        {streaming && !response ? (
+                          <div className="shimmer" aria-label="ATLAS is thinking"><span /><span /><span /></div>
+                        ) : (
+                          <div className={`console-body${responseError ? ' error' : ''}`}>
+                            {response}
+                            {streaming && <span className="caret" />}
+                          </div>
+                        )}
+                      </div>
+                    </motion.section>
+                  )}
+                </AnimatePresence>
+
+                <motion.div layout="position" transition={glide} variants={rise}>
+                  <form className={`composer shell pill-shell${listening ? ' listening' : ''}`} onSubmit={handleSubmit}>
+                    <div className="shell-core">
+                      <input
+                        ref={inputRef}
+                        value={inputText}
+                        onChange={e => setInputText(e.target.value)}
+                        placeholder={listening ? (transcript || 'Listening…') : 'Ask ATLAS anything…'}
+                        aria-label="Ask ATLAS"
+                      />
+                      {!inputText && !listening && <span className="kbd" aria-hidden="true">⌘K</span>}
+                      <button type="button" className="mic-btn" onClick={toggleListen} aria-pressed={listening}
+                        title={listening ? 'Stop listening' : 'Speak to ATLAS'} aria-label={listening ? 'Stop listening' : 'Speak to ATLAS'}>
+                        <Microphone size={19} weight={listening ? 'fill' : 'light'} />
+                      </button>
+                      <button type="submit" className="send-btn" disabled={!inputText.trim()} aria-label="Send">
+                        <ArrowUp size={18} weight="bold" />
+                      </button>
+                    </div>
+                  </form>
+                  <p className={`composer-hint${listening ? ' live' : ''}`}>
+                    {listening
+                      ? (transcript ? `“${transcript}”` : 'Listening. Tap the mic or press Esc to stop.')
+                      : mode === 'business' ? `Replies come from ${agentName}.` : null}
+                  </p>
+
+                  <div className="chips">
+                    {promptChips.map(chip => (
+                      <button key={chip.label} className="chip"
+                        onClick={() => { if (chip.agent) setActiveAgent(chip.agent); sendToAtlas(chip.text, chip.agent); }}>
+                        {chip.label}
+                        {chip.agent && <span className="chip-agent">· {AGENTS.find(a => a.id === chip.agent)?.name}</span>}
+                      </button>
+                    ))}
                   </div>
-                )}
-                {response}
-                {streaming && <span style={{ display:'inline-block', width:2, height:'1em', background:'#00c8ff', marginLeft:2, verticalAlign:'text-bottom', animation:'blink 1s infinite' }} />}
-                <button onClick={reset} style={{ position:'absolute', top:10, right:12, background:'transparent', border:'none', color:'rgba(255,255,255,0.25)', cursor:'pointer', fontSize:15 }}>✕</button>
+                </motion.div>
               </motion.div>
-            )}
-          </AnimatePresence>
+            </main>
 
-          {/* Voice transcript */}
-          <AnimatePresence>
-            {listening && (
-              <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }}
-                style={{ width:'100%', maxWidth:620, marginBottom:16, padding:'10px 16px', background:'rgba(160,80,255,0.1)', border:'1px solid rgba(160,80,255,0.3)', borderRadius:12, fontSize:13, color:'#c080ff', textAlign:'center' }}>
-                {transcript || <span style={{ opacity:0.5 }}>Listening…</span>}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Input pill */}
-          <motion.div initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.1 }}
-            style={{ width:'100%', maxWidth:620, marginBottom:28, display:'flex', alignItems:'center', gap:8, background:'rgba(255,255,255,0.045)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:16, padding:'8px 8px 8px 18px' }}>
-            <input
-              value={inputText}
-              onChange={e => setInputText(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
-              placeholder="Ask ATLAS anything…"
-              style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'white', fontSize:14, padding:'8px 0' }}
-            />
-            <motion.button onClick={toggleListen}
-              title={listening ? 'Stop listening' : 'Voice input'}
-              animate={listening ? { boxShadow:['0 0 0px rgba(160,80,255,0)','0 0 16px rgba(160,80,255,0.55)','0 0 0px rgba(160,80,255,0)'] } : {}}
-              transition={{ duration:0.9, repeat:Infinity }}
-              style={{ width:38, height:38, borderRadius:11, flexShrink:0, background:listening?'rgba(160,80,255,0.2)':'rgba(255,255,255,0.05)', border:`1px solid ${listening?'rgba(160,80,255,0.55)':'rgba(255,255,255,0.1)'}`, color:listening?'#c080ff':'rgba(255,255,255,0.5)', fontSize:16, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'background 0.2s, border-color 0.2s' }}>
-              🎤
-            </motion.button>
-            <button onClick={handleSubmit} title="Send" disabled={!inputText.trim()}
-              style={{ width:38, height:38, borderRadius:11, flexShrink:0, background: inputText.trim() ? '#00c8ff' : 'rgba(255,255,255,0.05)', border:'none', color: inputText.trim() ? '#0d0f16' : 'rgba(255,255,255,0.25)', fontSize:15, fontWeight:700, cursor: inputText.trim() ? 'pointer' : 'default', display:'flex', alignItems:'center', justifyContent:'center', transition:'background 0.2s, color 0.2s' }}>
-              ↑
-            </button>
-          </motion.div>
-          {listening && (
-            <div style={{ marginTop:-20, marginBottom:20, fontSize:10, color:'rgba(255,255,255,0.25)', letterSpacing:'0.14em', fontFamily:"'Space Mono',monospace" }}>
-              LISTENING — TAP MIC TO STOP
-            </div>
-          )}
-
-          {/* Routed prompt chips — mode-specific quick actions */}
-          <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'center', marginBottom:24, maxWidth:620 }}>
-            {promptChips.map((chip, i) => (
-              <button key={i} onClick={() => { if (chip.agent) setActiveAgent(chip.agent); sendToAtlas(chip.text, null, chip.agent); }}
-                style={{ padding:'8px 14px', borderRadius:20, border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.03)', color:'rgba(255,255,255,0.6)', fontSize:12, fontWeight:500, cursor:'pointer', transition:'all 0.15s' }}
-                onMouseEnter={e => { e.currentTarget.style.background='rgba(0,200,255,0.08)'; e.currentTarget.style.borderColor='rgba(0,200,255,0.25)'; e.currentTarget.style.color='#00c8ff'; }}
-                onMouseLeave={e => { e.currentTarget.style.background='rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.1)'; e.currentTarget.style.color='rgba(255,255,255,0.6)'; }}
-              >
-                {chip.label}{chip.agent ? ` → ${AGENTS.find(a=>a.id===chip.agent)?.name}` : ''}
-              </button>
-            ))}
+            <TodayPanel data={data} now={now} mode={mode} weather={weather} onAsk={text => sendToAtlas(text)} />
           </div>
+        </motion.div>
 
-          {/* Stat cards */}
-          <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.15 }}
-            className="atlas-stats-grid"
-            style={{ width:'100%', maxWidth:720, display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:24 }}>
-            {statCards.map(card => (
-              <StatCard key={card.id} card={card} onAsk={text => sendToAtlas(text, card.id)} weatherData={card.weather ? weatherData : null} />
-            ))}
-          </motion.div>
-        </div>
-      </div>
-
-      <style>{`
-        @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-
-        @media (max-width: 860px) {
-          .atlas-sidebar {
-            position: fixed;
-            top: 0; left: 0;
-            z-index: 150;
-            transform: translateX(-100%);
-            transition: transform 0.25s ease;
-            box-shadow: 0 0 40px rgba(0,0,0,0.5);
-          }
-          .atlas-sidebar.open { transform: translateX(0); }
-          .atlas-sidebar-close { display: flex !important; }
-          .atlas-backdrop { display: block !important; }
-          .atlas-hamburger { display: flex !important; }
-          .atlas-main-content { padding: 20px 16px !important; }
-          .atlas-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
-        }
-
-        @media (max-width: 480px) {
-          .atlas-stats-grid { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
-    </div>
+        <AnimatePresence>
+          {showVoice && <VoiceSettings key="voice" onClose={() => setShowVoice(false)} />}
+        </AnimatePresence>
+      </motion.div>
+    </MotionConfig>
   );
 }
