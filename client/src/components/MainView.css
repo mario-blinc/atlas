@@ -323,6 +323,9 @@
 .chip:hover { color: var(--text); background: var(--glass-hover); box-shadow: var(--sheen), 0 0 0 1px var(--hair-2); transform: translateY(-1px); }
 .chip:active { transform: scale(0.97); }
 .chip-agent { color: var(--text-3); }
+.chip svg { color: var(--text-3); }
+/* Everyday prompts live in the rail on desktop; the quick-fire row only repeats them on mobile */
+.chip.daily { display: none; }
 
 /* ─── Today ───────────────────────────────────────────────────────────────── */
 .today { min-height: 0; }
@@ -482,4 +485,5 @@
   .stage { padding: 12px 6px 8px; }
   .today-grid { grid-template-columns: 1fr; }
   .kbd { display: none; }
+  .chip.daily { display: inline-flex; }
 }

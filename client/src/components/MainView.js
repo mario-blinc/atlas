@@ -138,7 +138,8 @@ function VoiceSettings({ onClose }) {
 const QUICK_PROMPTS = [
   {
     Icon: House,
-    label: "Daddy's Home",
+    label: 'Home',
+    chip: "Daddy's home",
     text: "Daddy's home",
     response: "Welcome back, Mario. Systems are live, context is loaded. What shall we work on today?",
     canned: true,
@@ -709,6 +710,12 @@ export default function MainView({ data }) {
                   </p>
 
                   <div className="chips">
+                    {/* Everyday prompts: shown here on mobile, where the rail is tucked away */}
+                    {QUICK_PROMPTS.map(p => (
+                      <button key={p.label} className="chip daily" onClick={() => handleQuickPrompt(p)}>
+                        <p.Icon size={15} weight="light" />{p.chip || p.label}
+                      </button>
+                    ))}
                     {promptChips.map(chip => (
                       <button key={chip.label} className="chip"
                         onClick={() => { if (chip.agent) setActiveAgent(chip.agent); sendToAtlas(chip.text, chip.agent); }}>
