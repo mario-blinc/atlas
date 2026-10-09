@@ -375,6 +375,7 @@ export default function MainView({ data }) {
   const [weather, setWeather] = useState(undefined); // undefined = loading, null = failed
   const [bootKey, setBootKey] = useState(0);
   const [replyKey, setReplyKey] = useState(0);
+  const [pokeKey, setPokeKey] = useState(0);
   const recRef    = useRef(null);
   const streamRef = useRef(false);
   const inputRef  = useRef(null);
@@ -644,9 +645,9 @@ export default function MainView({ data }) {
                     hidden: { opacity: 0, scale: 0.9, y: 12, filter: 'blur(14px)' },
                     show:   { opacity: 1, scale: 1,   y: 0,  filter: 'blur(0px)', transition: { type: 'spring', stiffness: 90, damping: 15, ...unblur } },
                   }}>
-                    <div className="nest" data-state={core}>
-                      <Marshmallow state={core} size={250} analyserRef={analyserRef} waveKey={bootKey} />
-                    </div>
+                    <button type="button" className="nest" data-state={core} onClick={() => setPokeKey(k => k + 1)} aria-label="Say hi to ATLAS">
+                      <Marshmallow state={core} size={250} analyserRef={analyserRef} waveKey={bootKey} pokeKey={pokeKey} error={responseError} />
+                    </button>
                   </motion.div>
                   <motion.h1 className="greeting" variants={rise}>{greeting}</motion.h1>
                   <motion.div variants={rise}>

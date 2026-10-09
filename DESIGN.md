@@ -38,17 +38,21 @@ Geist Sans for everything, sentence case. The greeting is 30 to 42px, weight 500
 
 ## Signature: the marshmallow
 
-`Marshmallow.js` is ATLAS's character: an original soft marshmallow with oval eyes, a faint blush and two floating mitten hands. It's drawn in SVG and animated with Framer Motion. It lives in **the nest**, a dark notch-style capsule (42px radius, in a hairline tray) with a warm glow behind it that brightens with state.
+`Marshmallow.js` is ATLAS's character, drawn in SVG and animated with Framer Motion. It follows the character reference sheet: a soft, slightly irregular pillow shape with 3D-style shading (a top-left highlight and a cool lilac falloff underneath), big pill eyes, and shaded mitten hands tucked at its sides. Accent marks (sparkles, "?", "z Z", a heart) use ion. It lives in **the nest**, a dark notch-style capsule with a warm glow behind it that brightens with state. Clicking the nest pokes it.
 
-| State | What it does |
+| Trigger | Mood |
 |---|---|
-| Idle | Breathes, bobs its hands, blinks at irregular intervals, and its eyes follow the pointer |
-| Listening | Leans in, eyes widen, one hand cups its side |
-| Thinking | Sways, glances up, taps its chin |
-| Speaking | Its mouth opens with the real ElevenLabs audio through a Web Audio analyser (simulated chatter as a fallback), and the body squishes with it |
-| Daddy's Home | Happy ^^ eyes, a smile, a wave |
+| Idle | Neutral: blinks at irregular intervals, and its eyes follow the pointer |
+| Idle from 11pm to 6am | Sleepy, with "z Z" |
+| Listening | Attentive: wide eyes, head tilt, a hand up, sound marks |
+| Thinking | Thinking: one eye squinted, hand on chin, gentle sway |
+| Speaking | Talking: the mouth follows the real ElevenLabs audio through a Web Audio analyser (simulated chatter as a fallback), and the body squishes with it |
+| Reply finished | Happy for 1.6s (never interrupts another moment) |
+| Error | Confused, with brows and a "?" |
+| Daddy's Home | Excited: both hands waving, sparkle marks |
+| Click | A random reaction: wink, cheeky, laughing, love (holds a heart) or cool (sunglasses) |
 
-A small still head (`mark`) is the logo and the reply avatar. Under reduced motion it holds each pose without loops or blinking.
+A small still head (`mark`) is the logo and the reply avatar. Under reduced motion it holds each pose without loops, blinking or eye tracking.
 
 ## Motion (Framer Motion)
 
