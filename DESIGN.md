@@ -1,13 +1,21 @@
 # ATLAS design
 
-A polished dark assistant, held to the craft level of Raycast and Linear. Working tool first: standard controls, calm surfaces, one accent. Used mostly on a laptop at the desk.
+A personal AI command centre in dark brushed steel: cinematic, moody, ultra modern. Think a Stark workshop HUD, built with standard controls so it stays a working tool. Dark only, by design.
 
 ## Layout
 
-- **Rail** (248px, left): wordmark, Personal / Blinc switch, quick prompts, agents (Blinc only), clock.
-- **Assistant** (centre, max 640px): greeting with the orb, reply, composer, prompt chips.
-- **Today** (340px, right): schedule, then the overview list of sources.
-- Under 1120px the Today panel drops below the assistant in two columns; under 860px the rail becomes a drawer.
+- **Top bar** (60px): reactor mark and ATLAS wordmark, Personal / Blinc switch in the centre, clock, voice settings, avatar. A light seam runs along its lower edge.
+- **Rail** (252px, left): Protocols (quick prompts) and Agents (Blinc only).
+- **Stage** (centre, max 720px, vertically centred): the reactor core, greeting, live status, reply console, composer, prompt chips.
+- **Today** (360px, right): schedule timeline, then Systems (each source with an online/offline LED).
+- Under 1180px the Today panel drops below the stage in two columns. Under 860px the rail becomes a drawer and the mode switch moves into it.
+
+## Material
+
+- **Plate:** brushed steel. Fine horizontal grain over a cold vertical falloff, 1px steel border, bevel (light top edge, dark bottom edge), deep soft drop shadow.
+- **Brackets:** machined corner brackets in ion, on the reply console and the dialog only.
+- **Ground:** near-black with a cold light pool behind the core, plus fixed film grain.
+- **Radius:** 4px everywhere (2px inside segmented controls).
 
 ## Tokens
 
@@ -15,30 +23,34 @@ Defined in `client/src/index.css`.
 
 | Role | Value |
 |---|---|
-| Ground | `--bg #0f1013`, rail `--bg-rail #0b0c0e` |
-| Surfaces | `--surface #16171b`, `--surface-2 #1c1d22`, hover `#22232a` |
-| Lines | `rgba(255,255,255,.07)`, strong `.12` |
-| Text | `#ededef`, secondary `#a1a1aa`, tertiary `#80808a` |
-| Accent | `--accent #f09456` (warm ember), soft fill at 12% |
-| States | danger `#f07171`, success `#5cc08a` |
-| Radius | 6 / 10 / 14px |
+| Void | `#07080a` |
+| Steel | `950 #0b0d10`, `900 #101318`, `850 #14181e`, `800 #1a1f26`, `700 #232931`, `600 #2f363f` |
+| Lines | steel at 8% / 13% / 22% |
+| Text | `#e4e9ef`, secondary `#9aa3ae`, tertiary `#7a838e` |
+| Ion (sole accent) | `#9fd6ff`, hover `#c6e7ff`, ink `#04121e` |
+| Alert | `#ff6b5e` |
 
-The accent is only for primary actions, current selection, live state (now, listening) and the orb. Never decoration.
+Ion is only for live state (now, listening, online), the primary action, the selected mode or agent, and the core.
 
 ## Type
 
-Geist (400/500/600) for everything. Fixed scale: 12.5, 13.5, 14, 15, 26px. Tabular figures for times and numbers. No display or mono faces.
+- **Michroma** (wide, Eurostile-like): wordmark, greeting, panel titles, mode switch. Uppercase, tracked 0.06 to 0.36em.
+- **Geist Sans**: all interface and reading text.
+- **Geist Mono**: times, temperatures, values, status.
 
-## Icons
+All three are self-hosted via `@fontsource`.
 
-Phosphor (`@phosphor-icons/react`), regular weight, 15–18px. No emoji or unicode glyphs as icons.
+## Signature: the reactor core
+
+`ReactorCore.js` is a canvas with a tick ring and scanner sweep, a segmented arc ring, dashed and hairline rings, a waveform ring and a white-hot plasma core. State sets speed and intensity: idle, listening, thinking (fast spin, fast sweep) and speaking. While ATLAS speaks, the waveform reads the real ElevenLabs audio through a Web Audio analyser. It stays static under reduced motion.
 
 ## Motion
 
-150–250ms, ease-out `cubic-bezier(.16,1,.3,1)`, state changes only. The orb is the one signature element: its colour and movement show idle, listening, thinking and speaking. It goes still under reduced motion.
+- **Boot sequence (GSAP):** the top seam draws, panels power on with a clip reveal, the core spins up, the greeting decodes, then content rises in. It replays on Daddy's Home. Skipped under reduced motion.
+- **Everything else:** 150 to 300ms CSS transitions for state changes only. Replies power on with a clip reveal.
 
 ## Rules
 
-- No hero-number cards, eyebrow labels, gradient text or glow halos.
-- Sources that aren't wired up say "Not connected". Sample data is labelled as sample.
+- No emoji, no cyan neon, no gradient text.
+- Sources that aren't wired up say "Not connected", with the LED off. Sample data is labelled as sample.
 - Every control has hover, focus-visible, active and disabled states.

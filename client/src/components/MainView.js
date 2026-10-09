@@ -1,18 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import {
   House, CheckSquare, Tray, CalendarBlank, Sparkle, ArrowUpRight, Microphone, ArrowUp, X, List,
   SlidersHorizontal, Sun, Cloud, CloudRain, Snowflake, CloudSun, EnvelopeSimple, CurrencyGbp,
   FolderSimple, Kanban, PaintBrush, TrendUp, Play,
 } from '@phosphor-icons/react';
-import TalkingOrb from './TalkingOrb';
+import ReactorCore from './ReactorCore';
 import './MainView.css';
 
-const fadeUp = {
-  initial: { opacity: 0, y: 6 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] } },
-  exit:    { opacity: 0, transition: { duration: 0.12 } },
-};
+gsap.registerPlugin(useGSAP);
 
 // ─── Voice Settings ──────────────────────────────────────────────────────────
 function VoiceSettings({ onClose }) {
@@ -65,12 +62,8 @@ function VoiceSettings({ onClose }) {
   const otherVoices = voices.filter(v => !v.lang.startsWith('en'));
 
   return (
-    <motion.div className="dialog-backdrop" onClick={onClose}
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
-      <motion.div className="dialog" role="dialog" aria-modal="true" aria-labelledby="voice-title"
-        onClick={e => e.stopPropagation()}
-        initial={{ opacity: 0, scale: 0.97, y: 6 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }}
-        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}>
+    <div className="dialog-backdrop" onClick={onClose}>
+      <div className="dialog plate bracketed" role="dialog" aria-modal="true" aria-labelledby="voice-title" onClick={e => e.stopPropagation()}>
         <div className="dialog-head">
           <div>
             <h2 id="voice-title">Voice settings</h2>
@@ -80,7 +73,7 @@ function VoiceSettings({ onClose }) {
         </div>
 
         <div className="field">
-          <label className="field-label" htmlFor="voice-select" style={{ display: 'block', marginBottom: 6 }}>Voice</label>
+          <label htmlFor="voice-select">Voice</label>
           <select id="voice-select" value={sel} onChange={e => setSel(e.target.value)}>
             <option value="">Auto (Daniel, UK male)</option>
             {enVoices.length > 0 && <optgroup label="English">
@@ -116,8 +109,8 @@ function VoiceSettings({ onClose }) {
           </button>
           <button className="btn primary" onClick={save}>Save voice</button>
         </div>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }
 
@@ -150,29 +143,29 @@ const PERSONAL_PROMPT_CHIPS = [
   { label: 'Write a LinkedIn post', text: 'Write me a LinkedIn post.' },
 ];
 
-// ─── Overview rows — placeholder until real APIs are wired ───────────────────
+// ─── Systems list — placeholder until real APIs are wired ────────────────────
 const NOT_CONNECTED = 'Not connected';
 const GMAIL = 'https://mail.google.com';
 const TODOIST = 'https://todoist.com/app';
 const GCAL = 'https://calendar.google.com';
 const FORECAST = 'https://weather.com/en-GB/weather/today/l/London+England+GB';
 
-function getOverviewRows(mode) {
+function getSystems(mode) {
   if (mode === 'business') {
     return [
-      { id: 'blinc-email',    Icon: EnvelopeSimple, label: 'Blinc inbox',     detail: NOT_CONNECTED,          link: GMAIL,   linkLabel: 'Open Gmail',    prompt: 'What does my Blinc inbox look like?' },
-      { id: 'blinc-tasks',    Icon: CheckSquare,    label: 'Blinc tasks',     detail: NOT_CONNECTED,          link: TODOIST, linkLabel: 'Open Todoist',  prompt: 'What Blinc tasks are overdue?' },
-      { id: 'blinc-calendar', Icon: CalendarBlank,  label: 'Meetings today',  detail: NOT_CONNECTED,          link: GCAL,    linkLabel: 'Open Calendar', prompt: "Walk me through today's Blinc schedule." },
-      { id: 'weather',        weather: true,        label: 'London',                                          link: FORECAST, linkLabel: 'Full forecast', prompt: "What's the weather like in London today?" },
+      { id: 'blinc-email',    Icon: EnvelopeSimple, label: 'Blinc inbox',      detail: NOT_CONNECTED,          link: GMAIL,    linkLabel: 'Open Gmail',    prompt: 'What does my Blinc inbox look like?' },
+      { id: 'blinc-tasks',    Icon: CheckSquare,    label: 'Blinc tasks',      detail: NOT_CONNECTED,          link: TODOIST,  linkLabel: 'Open Todoist',  prompt: 'What Blinc tasks are overdue?' },
+      { id: 'blinc-calendar', Icon: CalendarBlank,  label: 'Meetings today',   detail: NOT_CONNECTED,          link: GCAL,     linkLabel: 'Open Calendar', prompt: "Walk me through today's Blinc schedule." },
+      { id: 'weather',        weather: true,        label: 'London',                                           link: FORECAST, linkLabel: 'Full forecast', prompt: "What's the weather like in London today?" },
       { id: 'blinc-invoices', Icon: CurrencyGbp,    label: 'Overdue invoices', detail: `${NOT_CONNECTED} · Xero`, link: null,  linkLabel: null,            prompt: 'Are there any overdue invoices I should chase?' },
-      { id: 'blinc-projects', Icon: FolderSimple,   label: 'Client projects', detail: NOT_CONNECTED,          link: null,    linkLabel: null,            prompt: 'What client projects are currently live?' },
+      { id: 'blinc-projects', Icon: FolderSimple,   label: 'Client projects',  detail: NOT_CONNECTED,          link: null,     linkLabel: null,            prompt: 'What client projects are currently live?' },
     ];
   }
   return [
-    { id: 'personal-email',    Icon: EnvelopeSimple, label: 'Inbox',          detail: NOT_CONNECTED, link: GMAIL,   linkLabel: 'Open Gmail',    prompt: 'What does my personal inbox look like?' },
-    { id: 'personal-tasks',    Icon: CheckSquare,    label: 'Tasks',          detail: NOT_CONNECTED, link: TODOIST, linkLabel: 'Open Todoist',  prompt: "What's on my personal to-do list?" },
-    { id: 'personal-calendar', Icon: CalendarBlank,  label: 'Meetings today', detail: NOT_CONNECTED, link: GCAL,    linkLabel: 'Open Calendar', prompt: "What's on my personal calendar today?" },
-    { id: 'weather',           weather: true,        label: 'London',                                link: FORECAST, linkLabel: 'Full forecast', prompt: "What's the weather like in London today?" },
+    { id: 'personal-email',    Icon: EnvelopeSimple, label: 'Inbox',             detail: NOT_CONNECTED, link: GMAIL,    linkLabel: 'Open Gmail',    prompt: 'What does my personal inbox look like?' },
+    { id: 'personal-tasks',    Icon: CheckSquare,    label: 'Tasks',             detail: NOT_CONNECTED, link: TODOIST,  linkLabel: 'Open Todoist',  prompt: "What's on my personal to-do list?" },
+    { id: 'personal-calendar', Icon: CalendarBlank,  label: 'Meetings today',    detail: NOT_CONNECTED, link: GCAL,     linkLabel: 'Open Calendar', prompt: "What's on my personal calendar today?" },
+    { id: 'weather',           weather: true,        label: 'London',                                   link: FORECAST, linkLabel: 'Full forecast', prompt: "What's the weather like in London today?" },
     { id: 'personal-projects', Icon: FolderSimple,   label: 'Personal projects', detail: 'Long Story Short · Project Ridgeway', link: null, linkLabel: null, prompt: "What's the latest on Long Story Short and Project Ridgeway?" },
   ];
 }
@@ -188,25 +181,41 @@ function weatherIcon(desc) {
 
 const fmtTime = d => d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
-// ─── Overview row ────────────────────────────────────────────────────────────
-function OverviewRow({ row, onAsk, weather }) {
-  let Icon = row.Icon, detail = row.detail, value = null;
+// Decode text in place, left to right, like a HUD resolving a readout.
+const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>/#';
+function scrambleTo(el, text, duration) {
+  const p = { v: 0 };
+  return gsap.to(p, {
+    v: 1, duration, ease: 'none',
+    onUpdate() {
+      if (!el) return;
+      const n = Math.floor(p.v * text.length);
+      let out = text.slice(0, n);
+      for (let i = n; i < text.length; i++) out += text[i] === ' ' ? ' ' : GLYPHS[(Math.random() * GLYPHS.length) | 0];
+      el.textContent = out;
+    },
+    onComplete() { if (el) el.textContent = text; },
+  });
+}
+
+// ─── Systems row ─────────────────────────────────────────────────────────────
+function SystemRow({ row, onAsk, weather }) {
+  let Icon = row.Icon, detail = row.detail, value = null, on = false;
   if (row.weather) {
     Icon = weatherIcon(weather?.description);
     if (weather === undefined) detail = 'Loading…';
     else if (!weather)         detail = 'Weather unavailable';
-    else { value = `${weather.temp_c}°`; detail = `${weather.description} · feels ${weather.feels_like_c}°`; }
+    else { on = true; value = `${weather.temp_c}°`; detail = `${weather.description} · feels ${weather.feels_like_c}°`; }
   }
   return (
-    <li className="overview-row">
-      <span className="overview-icon" aria-hidden="true"><Icon size={16} /></span>
+    <li className="sys-row" data-boot="item">
+      <span className={`sys-led${on ? ' on' : ''}`} title={on ? 'Live' : 'Offline'} />
+      <span className="sys-icon" aria-hidden="true"><Icon size={17} /></span>
       <div style={{ minWidth: 0 }}>
-        <div className="overview-label">
-          {row.label}{value && <> · <span className="overview-value">{value}</span></>}
-        </div>
-        <div className="overview-detail">{detail}</div>
+        <div className="sys-label">{row.label}{value && <span className="sys-value">{value}</span>}</div>
+        <div className="sys-detail">{detail}</div>
       </div>
-      <div className="overview-actions">
+      <div className="sys-actions">
         <button className="icon-btn sm" onClick={() => onAsk(row.prompt)} title="Ask ATLAS" aria-label={`Ask ATLAS about ${row.label}`}>
           <Sparkle size={15} />
         </button>
@@ -223,9 +232,8 @@ function OverviewRow({ row, onAsk, weather }) {
 // ─── Today panel ─────────────────────────────────────────────────────────────
 function TodayPanel({ data, now, mode, onAsk, weather }) {
   const events = data?.events || [];
-  const rows = getOverviewRows(mode);
   return (
-    <aside className="today" aria-label="Today">
+    <aside className="today" aria-label="Today" data-boot="panel">
       <div className="today-grid">
         <section className="panel-section">
           <div className="panel-head">
@@ -236,17 +244,18 @@ function TodayPanel({ data, now, mode, onAsk, weather }) {
           {events.length === 0 ? (
             <p className="empty">Nothing in the diary today.</p>
           ) : (
-            <ul className="agenda">
+            <ul className="timeline">
               {events.map(e => {
                 const s = new Date(e.start), en = new Date(e.end);
                 const live = s <= now && en >= now;
                 const past = en < now;
                 return (
-                  <li key={e.id} className={`agenda-item${live ? ' live' : ''}${past ? ' past' : ''}`}>
-                    <span className="agenda-time">{fmtTime(s)}</span>
+                  <li key={e.id} className={`tl-item${live ? ' live' : ''}${past ? ' past' : ''}`} data-boot="item">
+                    <span className="tl-node" />
+                    <span className="tl-time mono">{fmtTime(s)}</span>
                     <div style={{ minWidth: 0 }}>
-                      <div className="agenda-title">{e.title}{live && <span className="now-tag">Now</span>}</div>
-                      {e.location && <div className="agenda-where">{e.location}</div>}
+                      <div className="tl-title">{e.title}{live && <span className="now-tag">NOW</span>}</div>
+                      {e.location && <div className="tl-where">{e.location}</div>}
                     </div>
                   </li>
                 );
@@ -257,11 +266,11 @@ function TodayPanel({ data, now, mode, onAsk, weather }) {
 
         <section className="panel-section">
           <div className="panel-head">
-            <h2>Overview</h2>
+            <h2>Systems</h2>
             <span className="panel-meta">{mode === 'business' ? 'Blinc' : 'Personal'}</span>
           </div>
-          <ul className="overview">
-            {rows.map(r => <OverviewRow key={r.id} row={r} onAsk={onAsk} weather={r.weather ? weather : null} />)}
+          <ul className="systems">
+            {getSystems(mode).map(r => <SystemRow key={r.id} row={r} onAsk={onAsk} weather={r.weather ? weather : null} />)}
           </ul>
         </section>
       </div>
@@ -269,59 +278,53 @@ function TodayPanel({ data, now, mode, onAsk, weather }) {
   );
 }
 
-// ─── Rail ────────────────────────────────────────────────────────────────────
-function Rail({ open, onClose, onPrompt, mode, setMode, activeAgent, setActiveAgent, now }) {
+function ModeSwitch({ mode, setMode }) {
   return (
-    <nav className={`rail${open ? ' open' : ''}`} aria-label="ATLAS">
+    <div className="segmented" role="group" aria-label="Mode">
+      <button aria-pressed={mode === 'personal'} onClick={() => setMode('personal')}>Personal</button>
+      <button aria-pressed={mode === 'business'} onClick={() => setMode('business')}>Blinc</button>
+    </div>
+  );
+}
+
+// ─── Rail ────────────────────────────────────────────────────────────────────
+function Rail({ open, onClose, onPrompt, mode, setMode, activeAgent, setActiveAgent }) {
+  return (
+    <nav className={`rail${open ? ' open' : ''}`} aria-label="ATLAS" data-boot="panel">
       <div className="rail-head">
-        <div className="brand">
-          <TalkingOrb state="idle" size={22} quiet />
-          <span className="brand-name">ATLAS</span>
-        </div>
-        <button className="icon-btn rail-close" onClick={onClose} aria-label="Close menu"><X size={16} /></button>
+        <span className="brand-name">ATLAS</span>
+        <button className="icon-btn" onClick={onClose} aria-label="Close menu"><X size={16} /></button>
       </div>
 
       <div className="rail-body">
-        <div className="rail-group">
-          <div className="segmented" role="group" aria-label="Mode">
-            <button aria-pressed={mode === 'personal'} onClick={() => setMode('personal')}>Personal</button>
-            <button aria-pressed={mode === 'business'} onClick={() => setMode('business')}>Blinc</button>
-          </div>
-        </div>
+        <div className="rail-group"><ModeSwitch mode={mode} setMode={setMode} /></div>
 
         <div className="rail-group">
-          <div className="rail-label">Quick prompts</div>
+          <span className="label">Protocols</span>
           {QUICK_PROMPTS.map(p => (
-            <button key={p.label} className="nav-item" onClick={() => onPrompt(p)}>
-              <p.Icon size={17} />{p.label}
+            <button key={p.label} className="cmd" onClick={() => onPrompt(p)} data-boot="item">
+              <p.Icon size={18} />{p.label}
             </button>
           ))}
         </div>
 
-        <AnimatePresence initial={false}>
-          {mode === 'business' && (
-            <motion.div className="rail-group" {...fadeUp}>
-              <div className="rail-label">Agents</div>
-              {AGENTS.map(a => (
-                <button key={a.id} className="nav-item" aria-pressed={activeAgent === a.id} onClick={() => setActiveAgent(a.id)}>
-                  <a.Icon size={17} />{a.name}
-                  {a.sub && <span className="nav-sub">{a.sub}</span>}
-                </button>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      <div className="rail-foot">
-        <span className="clock">{fmtTime(now)}</span>
-        <span className="clock-date">{now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+        {mode === 'business' && (
+          <div className="rail-group console-enter">
+            <span className="label">Agents</span>
+            {AGENTS.map(a => (
+              <button key={a.id} className="cmd" aria-pressed={activeAgent === a.id} onClick={() => setActiveAgent(a.id)}>
+                <a.Icon size={18} /><span className="cmd-text">{a.name}</span>
+                {a.sub && <span className="cmd-sub">{a.sub}</span>}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </nav>
   );
 }
 
-const ORB_STATUS = { listening: 'Listening…', thinking: 'Thinking…', speaking: 'Speaking' };
+const STATUS = { idle: 'Standing by', listening: 'Listening', thinking: 'Processing', speaking: 'Speaking' };
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 export default function MainView({ data }) {
@@ -338,9 +341,13 @@ export default function MainView({ data }) {
   const [activeAgent, setActiveAgent] = useState('studio-manager');
   const [now, setNow] = useState(new Date());
   const [weather, setWeather] = useState(undefined); // undefined = loading, null = failed
+  const [bootKey, setBootKey] = useState(0);
+  const [replyKey, setReplyKey] = useState(0);
   const recRef    = useRef(null);
   const streamRef = useRef(false);
   const inputRef  = useRef(null);
+  const rootRef   = useRef(null);
+  const greetRef  = useRef(null);
 
   const events  = data?.events  || [];
   const tasks   = data?.tasks   || [];
@@ -356,16 +363,54 @@ export default function MainView({ data }) {
   }, []);
 
   const hour = now.getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const greeting = `${hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'}, Mario`;
+  const greetingRef = useRef(greeting);
+  greetingRef.current = greeting;
+  useEffect(() => { if (greetRef.current) greetRef.current.textContent = greeting; }, [greeting]);
+
   const promptChips = mode === 'business' ? BUSINESS_PROMPT_CHIPS : PERSONAL_PROMPT_CHIPS;
   const agentName = AGENTS.find(a => a.id === activeAgent)?.name;
 
-  // ElevenLabs voice output
+  // Boot sequence: the shell powers on, the core spins up, the greeting decodes.
+  // Replays on Daddy's Home. Skipped entirely under reduced motion.
+  useGSAP(() => {
+    const mm = gsap.matchMedia();
+    mm.add('(prefers-reduced-motion: no-preference)', () => {
+      const el = greetRef.current;
+      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+      tl.call(() => { if (el) el.textContent = ''; }, null, 0)
+        .from('.topbar-edge', { scaleX: 0, duration: 0.8 }, 0)
+        .from('[data-boot="panel"]', { clipPath: 'inset(0 0 100% 0)', opacity: 0, duration: 0.7, stagger: 0.1, clearProps: 'clipPath,opacity' }, 0.1)
+        .from('[data-boot="core"]', { scale: 0.72, opacity: 0, duration: 1.2, ease: 'expo.out', clearProps: 'transform,opacity' }, 0.15)
+        .add(scrambleTo(el, greetingRef.current, 0.9), 0.5)
+        .from('[data-boot="rise"]', { y: 14, opacity: 0, duration: 0.6, stagger: 0.08, clearProps: 'transform,opacity' }, 0.7)
+        .from('[data-boot="item"]', { x: -8, opacity: 0, duration: 0.4, stagger: 0.035, clearProps: 'transform,opacity' }, 0.55);
+      return () => { if (greetRef.current) greetRef.current.textContent = greetingRef.current; };
+    });
+    return () => mm.revert();
+  }, { scope: rootRef, dependencies: [bootKey] });
+
+  // Voice output (ElevenLabs), routed through an analyser so the core can read the real voice
   const audioRef      = useRef(null);
   const audioUnlocked = useRef(false);
+  const audioCtxRef   = useRef(null);
+  const analyserRef   = useRef(null);
 
   // Unlock browser audio on first interaction
   const unlockAudio = useCallback(() => {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC && !audioCtxRef.current) {
+      try {
+        const ctx = new AC();
+        const an = ctx.createAnalyser();
+        an.fftSize = 128;
+        an.smoothingTimeConstant = 0.72;
+        an.connect(ctx.destination);
+        audioCtxRef.current = ctx;
+        analyserRef.current = an;
+      } catch { /* analyser is optional */ }
+    }
+    audioCtxRef.current?.resume?.().catch(() => {});
     if (audioUnlocked.current) return;
     const a = new Audio();
     a.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
@@ -401,6 +446,13 @@ export default function MainView({ data }) {
       audioRef.current = audio;
       audio.src = url;
 
+      // Only route through Web Audio when the context is running; otherwise the
+      // element would play into a suspended graph and be silent.
+      const ctx = audioCtxRef.current;
+      if (ctx && ctx.state === 'running' && analyserRef.current) {
+        try { ctx.createMediaElementSource(audio).connect(analyserRef.current); } catch { /* plays directly */ }
+      }
+
       audio.onended = () => { setOrbState('idle'); URL.revokeObjectURL(url); audioRef.current = null; };
       audio.onerror = (e) => { console.error('Audio error:', e); setOrbState('idle'); URL.revokeObjectURL(url); };
 
@@ -421,6 +473,7 @@ export default function MainView({ data }) {
   // Send to ATLAS API
   const sendToAtlas = useCallback(async (text, agentOverride=null) => {
     if (streamRef.current) return;
+    setReplyKey(k => k + 1);
     setResponse('');
     setResponseError(false);
     setOrbState('thinking');
@@ -471,6 +524,8 @@ export default function MainView({ data }) {
     unlockAudio();
     setSidebarOpen(false);
     if (promptObj.canned) {
+      setBootKey(k => k + 1);
+      setReplyKey(k => k + 1);
       setResponseError(false);
       setResponse(promptObj.response);
       speak(promptObj.response);
@@ -499,9 +554,10 @@ export default function MainView({ data }) {
 
   const toggleListen = useCallback(() => {
     if (!recRef.current) return;
+    unlockAudio();
     if (listening) { recRef.current.stop(); setListening(false); setOrbState('idle'); }
     else { setTranscript(''); recRef.current.start(); setListening(true); setOrbState('listening'); }
-  }, [listening]);
+  }, [listening, unlockAudio]);
 
   const reset = () => {
     window.speechSynthesis?.cancel();
@@ -534,10 +590,10 @@ export default function MainView({ data }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [sidebarOpen, listening, showVoice, toggleListen]);
 
-  const orb = listening ? 'listening' : orbState;
+  const core = listening ? 'listening' : orbState;
   const nextEvent = events.map(e => ({ ...e, s: new Date(e.start) })).find(e => e.s > now);
   const daySummary = data?.mock
-    ? 'Ask anything, or pick a quick prompt.'
+    ? 'Ask anything, or run a protocol.'
     : events.length === 0
       ? 'Nothing in the diary today.'
       : `${events.length} meeting${events.length === 1 ? '' : 's'} today. ${nextEvent ? `Next: ${nextEvent.title} at ${fmtTime(nextEvent.s)}.` : 'Nothing else coming up.'}`;
@@ -545,69 +601,65 @@ export default function MainView({ data }) {
   const replyFrom = mode === 'business' ? agentName : 'ATLAS';
 
   return (
-    <div className="atlas">
-      <Rail open={sidebarOpen} onClose={() => setSidebarOpen(false)} onPrompt={handleQuickPrompt}
-        mode={mode} setMode={setMode} activeAgent={activeAgent} setActiveAgent={setActiveAgent} now={now} />
-
-      <AnimatePresence>
-        {sidebarOpen && (
-          <motion.div className="backdrop" onClick={() => setSidebarOpen(false)}
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showVoice && <VoiceSettings onClose={() => setShowVoice(false)} />}
-      </AnimatePresence>
-
-      <div className="main">
-        <header className="topbar">
+    <div className="atlas" ref={rootRef}>
+      <header className="topbar">
+        <div className="brand">
           <button className="icon-btn hamburger" onClick={() => setSidebarOpen(true)} aria-label="Open menu"><List size={18} /></button>
-          <span className="topbar-title">Home</span>
-          <span className="topbar-crumb">/ {mode === 'business' ? `Blinc · ${agentName}` : 'Personal'}</span>
-          <span className="topbar-spacer" />
+          <ReactorCore size={26} mark />
+          <span className="brand-name">ATLAS</span>
+        </div>
+        <div className="topbar-mid"><ModeSwitch mode={mode} setMode={setMode} /></div>
+        <div className="topbar-right">
+          <span className="clock mono">{fmtTime(now)}</span>
+          <span className="clock-date">{now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
           <button className="icon-btn" onClick={() => setShowVoice(true)} title="Voice settings" aria-label="Voice settings">
-            <SlidersHorizontal size={17} />
+            <SlidersHorizontal size={18} />
           </button>
           <span className="avatar" aria-label="Mario">M</span>
-        </header>
+        </div>
+        <span className="topbar-edge" />
+      </header>
+
+      <div className="body">
+        <Rail open={sidebarOpen} onClose={() => setSidebarOpen(false)} onPrompt={handleQuickPrompt}
+          mode={mode} setMode={setMode} activeAgent={activeAgent} setActiveAgent={setActiveAgent} />
+        {sidebarOpen && <div className="backdrop" onClick={() => setSidebarOpen(false)} />}
 
         <div className="workspace">
-          <main className="assistant">
-            <div className="assistant-inner">
-              <div className="hello">
-                <TalkingOrb state={orb} size={60} />
-                <div>
-                  <h1>{greeting}, Mario</h1>
-                  <p aria-live="polite">
-                    {orb !== 'idle'
-                      ? <span className={`orb-status${orb === 'listening' ? ' live' : ''}`}>{ORB_STATUS[orb]}</span>
-                      : daySummary}
-                  </p>
+          <main className="stage">
+            <div className="stage-inner">
+              <div className="core-block">
+                <div className="core-wrap" data-boot="core">
+                  <ReactorCore state={core} size={236} analyserRef={analyserRef} bootKey={bootKey} />
                 </div>
+                <h1 className="greeting">
+                  <span className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{greeting}</span>
+                  <span ref={greetRef} aria-hidden="true">{null}</span>
+                </h1>
+                <div className={`status mono${core !== 'idle' ? ' live' : ''}`} aria-live="polite" data-boot="rise">
+                  <span className="status-led" />{STATUS[core]}
+                </div>
+                <p className="summary" data-boot="rise">{daySummary}</p>
               </div>
 
-              <AnimatePresence mode="wait">
-                {showReply && (
-                  <motion.section key="reply" className="reply" aria-label={`Reply from ${replyFrom}`} {...fadeUp}>
-                    <div className="reply-head">
-                      <TalkingOrb state={streaming ? 'speaking' : 'idle'} size={18} quiet />
-                      <span className="reply-from">{replyFrom}</span>
-                      <button className="icon-btn sm" onClick={reset} aria-label="Dismiss reply"><X size={14} /></button>
+              {showReply && (
+                <section key={replyKey} className="console plate bracketed console-enter" aria-label={`Reply from ${replyFrom}`}>
+                  <div className="console-head">
+                    <span className="label">{replyFrom}</span>
+                    <button className="icon-btn sm" onClick={reset} aria-label="Dismiss reply"><X size={14} /></button>
+                  </div>
+                  {streaming && !response ? (
+                    <div className="scan" aria-label="ATLAS is thinking"><span /><span /><span /></div>
+                  ) : (
+                    <div className={`console-body${responseError ? ' error' : ''}`}>
+                      {response}
+                      {streaming && <span className="caret" />}
                     </div>
-                    {streaming && !response ? (
-                      <div className="thinking" aria-label="ATLAS is thinking"><span /><span /><span /></div>
-                    ) : (
-                      <div className={`reply-body${responseError ? ' error' : ''}`}>
-                        {response}
-                        {streaming && <span className="caret" />}
-                      </div>
-                    )}
-                  </motion.section>
-                )}
-              </AnimatePresence>
+                  )}
+                </section>
+              )}
 
-              <form className={`composer${listening ? ' listening' : ''}`} onSubmit={handleSubmit}>
+              <form className={`composer plate${listening ? ' listening' : ''}`} onSubmit={handleSubmit} data-boot="rise">
                 <input
                   ref={inputRef}
                   value={inputText}
@@ -630,7 +682,7 @@ export default function MainView({ data }) {
                   : mode === 'business' ? `Replies come from ${agentName}.` : null}
               </p>
 
-              <div className="chips">
+              <div className="chips" data-boot="rise">
                 {promptChips.map(chip => (
                   <button key={chip.label} className="chip"
                     onClick={() => { if (chip.agent) setActiveAgent(chip.agent); sendToAtlas(chip.text, chip.agent); }}>
@@ -645,6 +697,8 @@ export default function MainView({ data }) {
           <TodayPanel data={data} now={now} mode={mode} weather={weather} onAsk={text => sendToAtlas(text)} />
         </div>
       </div>
+
+      {showVoice && <VoiceSettings onClose={() => setShowVoice(false)} />}
     </div>
   );
 }
