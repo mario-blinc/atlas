@@ -4,13 +4,16 @@ import { motion } from 'framer-motion';
 // Fluid plasma-glass orb — canvas-rendered organic blob with a rotating rim light,
 // replacing the old static radial-gradient sphere.
 const PALETTES = {
-  idle:      { stops: ['#1a2a6c', '#4d3dbc', '#00c8ff'], rim: '#7db8ff', bg: '#060a18' },
-  speaking:  { stops: ['#0a3d62', '#00c8ff', '#6affe0'], rim: '#7fe8ff', bg: '#04141c' },
-  listening: { stops: ['#3d1a6c', '#a259e6', '#ff8ad8'], rim: '#e0a0ff', bg: '#160a24' },
-  thinking:  { stops: ['#142a6c', '#3d5ce6', '#00ccff'], rim: '#8ab4ff', bg: '#0a1230' },
+  idle:      { stops: ['#2a2420', '#7a5136', '#f2b98c'], rim: '#f5c49a', bg: '#141113' },
+  speaking:  { stops: ['#3b2414', '#f09456', '#ffe2c6'], rim: '#ffc08f', bg: '#1a0f08' },
+  listening: { stops: ['#3a2416', '#e07a3f', '#ffd2a8'], rim: '#ffb37a', bg: '#1c0f07' },
+  thinking:  { stops: ['#1e2026', '#5a6070', '#dde1ea'], rim: '#e6e9f0', bg: '#0f1013' },
 };
 
-export default function TalkingOrb({ state = 'idle', size = 84 }) {
+const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+// `quiet` drops the halo and pulse rings for small inline uses (brand mark, reply header).
+export default function TalkingOrb({ state = 'idle', size = 84, quiet = false }) {
   const canvasRef = useRef(null);
   const rafRef = useRef(null);
   const tRef = useRef(0);
@@ -25,8 +28,9 @@ export default function TalkingOrb({ state = 'idle', size = 84 }) {
     ctx.scale(dpr, dpr);
 
     const palette = PALETTES[state] || PALETTES.idle;
-    const speed      = state === 'idle' ? 0.35 : state === 'thinking' ? 0.9 : state === 'listening' ? 1.1 : 0.75;
-    const wobbleAmp  = state === 'idle' ? 1.6  : state === 'thinking' ? 3   : state === 'listening' ? 4   : 2.4;
+    const still      = reducedMotion();
+    const speed      = still ? 0 : state === 'idle' ? 0.35 : state === 'thinking' ? 0.9 : state === 'listening' ? 1.1 : 0.75;
+    const wobbleAmp  = (size / 84) * (state === 'idle' ? 1.6  : state === 'thinking' ? 3   : state === 'listening' ? 4   : 2.4);
     const N   = 48;
     const cx  = size / 2, cy = size / 2;
     const baseR = size * 0.42;
@@ -92,7 +96,7 @@ export default function TalkingOrb({ state = 'idle', size = 84 }) {
         ctx.lineWidth = 2.2;
         ctx.strokeStyle = conic;
         ctx.shadowColor = palette.rim;
-        ctx.shadowBlur = 8;
+        ctx.shadowBlur = quiet ? 0 : 6;
         ctx.stroke();
         ctx.shadowBlur = 0;
       } else {
@@ -101,20 +105,20 @@ export default function TalkingOrb({ state = 'idle', size = 84 }) {
         ctx.stroke();
       }
 
-      rafRef.current = requestAnimationFrame(render);
+      if (!still) rafRef.current = requestAnimationFrame(render);
     }
     render();
     return () => cancelAnimationFrame(rafRef.current);
-  }, [state, size]);
+  }, [state, size, quiet]);
 
   const palette = PALETTES[state] || PALETTES.idle;
 
   return (
     <div style={{ position:'relative', width:size, height:size }}>
-      <motion.div animate={{ scale:[1,1.4,1], opacity:[0.3,0.6,0.3] }} transition={{ duration: state==='idle'?4:1.5, repeat:Infinity }}
-        style={{ position:'absolute', inset:-18, borderRadius:'50%', background:`radial-gradient(circle, ${palette.rim}30 0%, transparent 70%)`, filter:'blur(10px)', pointerEvents:'none' }} />
-      <canvas ref={canvasRef} style={{ width:size, height:size, display:'block', filter:`drop-shadow(0 0 22px ${palette.rim}55)` }} />
-      {state !== 'idle' && [0, 1].map(i => (
+      {!quiet && <motion.div animate={{ scale:[1,1.3,1], opacity:[0.2,0.4,0.2] }} transition={{ duration: state==='idle'?4:1.5, repeat:Infinity }}
+        style={{ position:'absolute', inset:-18, borderRadius:'50%', background:`radial-gradient(circle, ${palette.rim}30 0%, transparent 70%)`, filter:'blur(10px)', pointerEvents:'none' }} />}
+      <canvas ref={canvasRef} style={{ width:size, height:size, display:'block', filter: quiet ? 'none' : `drop-shadow(0 0 16px ${palette.rim}33)` }} />
+      {!quiet && state !== 'idle' && [0, 1].map(i => (
         <motion.div key={i} initial={{ scale:0.9, opacity:0.5 }} animate={{ scale:1.9, opacity:0 }}
           transition={{ duration:1.8, repeat:Infinity, delay:i*0.9 }}
           style={{ position:'absolute', inset:0, borderRadius:'50%', border:`1px solid ${palette.rim}50`, pointerEvents:'none' }} />
