@@ -5,7 +5,7 @@ import {
   SlidersHorizontal, Sun, Cloud, CloudRain, Snowflake, CloudSun, EnvelopeSimple, CurrencyGbp,
   FolderSimple, Kanban, PaintBrush, TrendUp, Play,
 } from '@phosphor-icons/react';
-import Marshmallow from './Marshmallow';
+import Melo from './Melo';
 import './MainView.css';
 
 // ─── Motion language: soft springs, things settle rather than stop ──────────
@@ -356,7 +356,7 @@ function Rail({ open, onClose, onPrompt, mode, setMode, activeAgent, setActiveAg
   );
 }
 
-const STATUS = { idle: 'Ready when you are', listening: 'Listening', thinking: 'Thinking', speaking: 'Speaking' };
+const STATUS = { idle: 'Melo is ready', listening: 'Melo is listening', thinking: 'Melo is thinking', speaking: 'Melo is speaking' };
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 export default function MainView({ data }) {
@@ -614,7 +614,7 @@ export default function MainView({ data }) {
         <motion.header className="islands" variants={rise}>
           <div className="brand">
             <button className="icon-btn hamburger" onClick={() => setSidebarOpen(true)} aria-label="Open menu"><List size={20} weight="light" /></button>
-            <Marshmallow size={28} mark />
+            <Melo size={28} mark />
             <span className="brand-name">ATLAS</span>
           </div>
           <div className="island-mode shell pill-shell">
@@ -645,8 +645,9 @@ export default function MainView({ data }) {
                     hidden: { opacity: 0, scale: 0.9, y: 12, filter: 'blur(14px)' },
                     show:   { opacity: 1, scale: 1,   y: 0,  filter: 'blur(0px)', transition: { type: 'spring', stiffness: 90, damping: 15, ...unblur } },
                   }}>
-                    <button type="button" className="nest" data-state={core} onClick={() => setPokeKey(k => k + 1)} aria-label="Say hi to ATLAS">
-                      <Marshmallow state={core} size={250} analyserRef={analyserRef} waveKey={bootKey} pokeKey={pokeKey} error={responseError} />
+                    <button type="button" className="nest" data-state={core} onClick={() => setPokeKey(k => k + 1)} aria-label="Poke Melo" title="Poke Melo">
+                      <Melo state={core} size={250} analyserRef={analyserRef} waveKey={bootKey} pokeKey={pokeKey}
+                        error={responseError} typing={!!inputText.trim() && !streaming} mode={mode} />
                     </button>
                   </motion.div>
                   <motion.h1 className="greeting" variants={rise}>{greeting}</motion.h1>
@@ -663,7 +664,7 @@ export default function MainView({ data }) {
                     <motion.section key={replyKey} className="console shell" aria-label={`Reply from ${replyFrom}`} {...settle}>
                       <div className="shell-core">
                         <div className="console-head">
-                          <Marshmallow size={22} mark />
+                          <Melo size={22} mark />
                           <span className="console-from">{replyFrom}</span>
                           <button className="icon-btn sm" onClick={reset} aria-label="Dismiss reply"><X size={15} weight="light" /></button>
                         </div>

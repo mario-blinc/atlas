@@ -1,12 +1,12 @@
 # ATLAS design
 
-Soft steel glass. Dark and moody, but fluid and calm rather than techy: rounded glass shells, pill controls, a marshmallow character, and spring motion that settles instead of stopping. The aim is always the best experience for daily use. Dark only, by design.
+Soft steel glass. Dark and moody, but fluid and calm rather than techy: rounded glass shells, pill controls, Melo the marshmallow, and spring motion that settles instead of stopping. The aim is always the best experience for daily use. Dark only, by design.
 
 ## Layout
 
 - **Islands** (top, floating): ATLAS mark and wordmark on the left, the Personal / Blinc switch in a centred pill, and clock, voice settings and avatar in a right pill.
 - **Rail** (252px shell, left): Protocols (quick prompts) and Agents (Blinc only).
-- **Stage** (centre, max 680px, vertically centred): the character in its nest, greeting, status pill, summary, reply, composer, prompt chips.
+- **Stage** (centre, max 680px, vertically centred): Melo in his nest, greeting, status pill, summary, reply, composer, prompt chips.
 - **Today** (360px shell, right): schedule timeline, then Connections.
 - Everything floats with a 14px gutter. Under 1180px, Today drops below the stage in two columns. Under 860px, the rail becomes a floating drawer and the mode switch moves into it.
 
@@ -36,23 +36,30 @@ Ion is only for live state, the primary action, and the selected mode or agent.
 
 Geist Sans for everything, sentence case. The greeting is 30 to 42px, weight 500, tracked -0.035em. Tabular figures throughout. Phosphor icons in the Light weight.
 
-## Signature: the marshmallow
+## Signature: Melo
 
-`Marshmallow.js` is ATLAS's character, drawn in SVG and animated with Framer Motion. It follows the character reference sheet: a soft, slightly irregular pillow shape with 3D-style shading (a top-left highlight and a cool lilac falloff underneath), big pill eyes, and shaded mitten hands tucked at its sides. Accent marks (sparkles, "?", "z Z", a heart) use ion. It lives in **the nest**, a dark notch-style capsule with a warm glow behind it that brightens with state. Clicking the nest pokes it.
+**Melo** is ATLAS's companion: a digital marshmallow who is curious, cheeky, clever and occasionally dramatic. ATLAS is the dashboard; Melo is its face. `Melo.js` draws him in SVG and animates him with Framer Motion, following the character reference sheet. He has a soft, slightly irregular pillow shape with 3D-style shading (a top-left highlight and a cool lilac falloff), big pill eyes that blink and don't track the cursor, and shaded mitten hands. Marks and props (sparkles, "?", "z Z", anger, the heart and the chat bubble) use ion. Confetti adds pink and amber for the celebration only.
 
-| Trigger | Mood |
+He lives in **the nest**, a dark notch-style capsule with a warm glow behind him that brightens with state. Clicking the nest pokes him. The status pill speaks for him ("Melo is thinking").
+
+| Trigger | Melo |
 |---|---|
-| Idle | Neutral: blinks at irregular intervals, and its eyes follow the pointer |
-| Idle from 11pm to 6am | Sleepy, with "z Z" |
-| Listening | Attentive: wide eyes, head tilt, a hand up, sound marks |
-| Thinking | Thinking: one eye squinted, hand on chin, gentle sway |
-| Speaking | Talking: the mouth follows the real ElevenLabs audio through a Web Audio analyser (simulated chatter as a fallback), and the body squishes with it |
+| Idle | Neutral, with natural blinks (sometimes double) |
+| Left alone (every 14 to 26s) | Plays a fidget: curious "?", wink, cheeky, laughing, surprised, sunglasses, or a dramatic sulk |
+| 11pm to 6am | Sleepy "z Z"; a poke wakes him up surprised |
+| You're typing | Holds up a chat bubble with typing dots |
+| Listening | Attentive: wide eyes, head tilt, a hand up |
+| Thinking | Squint, hand on chin; after 2.5s he pulls out a laptop |
+| Answer arrives | Lightbulb moment |
+| Speaking | Mouth follows the real ElevenLabs audio through a Web Audio analyser (simulated chatter as a fallback), and the body squishes |
 | Reply finished | Happy for 1.6s (never interrupts another moment) |
 | Error | Confused, with brows and a "?" |
-| Daddy's Home | Excited: both hands waving, sparkle marks |
-| Click | A random reaction: wink, cheeky, laughing, love (holds a heart) or cool (sunglasses) |
+| Daddy's Home | Celebrates: waving, with confetti |
+| Switch to Blinc / Personal | Sunglasses on / a smile |
+| Click | Random: wink, cheeky, laughing, love (holds a heart), cool, surprised |
+| Five clicks in 4s | Angry, with a shaking anger mark |
 
-A small still head (`mark`) is the logo and the reply avatar. Under reduced motion it holds each pose without loops, blinking or eye tracking.
+A small still head (`mark`) is the logo and the reply avatar. Under reduced motion he holds each pose without loops, blinking or fidgets.
 
 ## Motion (Framer Motion)
 
