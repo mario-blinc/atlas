@@ -1,12 +1,12 @@
 # ATLAS design
 
-Soft steel glass. Dark and moody, but fluid and calm rather than techy: rounded glass shells, pill controls, a liquid core, and spring motion that settles instead of stopping. The aim is always the best experience for daily use. Dark only, by design.
+Soft steel glass. Dark and moody, but fluid and calm rather than techy: rounded glass shells, pill controls, a marshmallow character, and spring motion that settles instead of stopping. The aim is always the best experience for daily use. Dark only, by design.
 
 ## Layout
 
 - **Islands** (top, floating): ATLAS mark and wordmark on the left, the Personal / Blinc switch in a centred pill, and clock, voice settings and avatar in a right pill.
 - **Rail** (252px shell, left): Protocols (quick prompts) and Agents (Blinc only).
-- **Stage** (centre, max 680px, vertically centred): the liquid core, greeting, status pill, summary, reply, composer, prompt chips.
+- **Stage** (centre, max 680px, vertically centred): the character in its nest, greeting, status pill, summary, reply, composer, prompt chips.
 - **Today** (360px shell, right): schedule timeline, then Connections.
 - Everything floats with a 14px gutter. Under 1180px, Today drops below the stage in two columns. Under 860px, the rail becomes a floating drawer and the mode switch moves into it.
 
@@ -30,15 +30,25 @@ Defined in `client/src/index.css`.
 | Alert | `#ff7a6e` |
 | Easing | fluid `cubic-bezier(.32,.72,0,1)`, out `cubic-bezier(.16,1,.3,1)` |
 
-Ion is only for live state, the primary action, the selected mode or agent, and the core.
+Ion is only for live state, the primary action, and the selected mode or agent.
 
 ## Type
 
 Geist Sans for everything, sentence case. The greeting is 30 to 42px, weight 500, tracked -0.035em. Tabular figures throughout. Phosphor icons in the Light weight.
 
-## Signature: the liquid core
+## Signature: the marshmallow
 
-`LiquidCore.js` is a canvas glass sphere. A smooth blob surface sits over a drifting inner current, with a specular highlight, a soft halo and two orbits with a gliding light. While ATLAS speaks, the rim ripples with the real ElevenLabs audio through a Web Audio analyser. Listening swells it and thinking speeds the inner swirl. It stays still under reduced motion.
+`Marshmallow.js` is ATLAS's character: an original soft marshmallow with oval eyes, a faint blush and two floating mitten hands. It's drawn in SVG and animated with Framer Motion. It lives in **the nest**, a dark notch-style capsule (42px radius, in a hairline tray) with a warm glow behind it that brightens with state.
+
+| State | What it does |
+|---|---|
+| Idle | Breathes, bobs its hands, blinks at irregular intervals, and its eyes follow the pointer |
+| Listening | Leans in, eyes widen, one hand cups its side |
+| Thinking | Sways, glances up, taps its chin |
+| Speaking | Its mouth opens with the real ElevenLabs audio through a Web Audio analyser (simulated chatter as a fallback), and the body squishes with it |
+| Daddy's Home | Happy ^^ eyes, a smile, a wave |
+
+A small still head (`mark`) is the logo and the reply avatar. Under reduced motion it holds each pose without loops or blinking.
 
 ## Motion (Framer Motion)
 

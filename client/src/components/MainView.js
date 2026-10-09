@@ -5,21 +5,23 @@ import {
   SlidersHorizontal, Sun, Cloud, CloudRain, Snowflake, CloudSun, EnvelopeSimple, CurrencyGbp,
   FolderSimple, Kanban, PaintBrush, TrendUp, Play,
 } from '@phosphor-icons/react';
-import LiquidCore from './LiquidCore';
+import Marshmallow from './Marshmallow';
 import './MainView.css';
 
 // ─── Motion language: soft springs, things settle rather than stop ──────────
 const spring = { type: 'spring', stiffness: 380, damping: 34, mass: 0.8 };
 const glide  = { type: 'spring', stiffness: 120, damping: 20 };
+// Blur resolves on a tween: a spring would overshoot below zero, which is an invalid filter
+const unblur = { filter: { duration: 0.55, ease: [0.16, 1, 0.3, 1] } };
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.05 } } };
 const rise = {
   hidden: { opacity: 0, y: 18, filter: 'blur(10px)' },
-  show:   { opacity: 1, y: 0,  filter: 'blur(0px)', transition: glide },
+  show:   { opacity: 1, y: 0,  filter: 'blur(0px)', transition: { ...glide, ...unblur } },
 };
 const fade = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.6 } } };
 const settle = {
   initial: { opacity: 0, y: 14, scale: 0.98, filter: 'blur(8px)' },
-  animate: { opacity: 1, y: 0,  scale: 1,    filter: 'blur(0px)', transition: glide },
+  animate: { opacity: 1, y: 0,  scale: 1,    filter: 'blur(0px)', transition: { ...glide, ...unblur } },
   exit:    { opacity: 0, y: -6, scale: 0.99, filter: 'blur(6px)', transition: { duration: 0.2 } },
 };
 
@@ -331,7 +333,7 @@ function Rail({ open, onClose, onPrompt, mode, setMode, activeAgent, setActiveAg
               {mode === 'business' && (
                 <motion.div className="rail-group" key="agents"
                   initial={{ opacity: 0, y: 10, filter: 'blur(6px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                  exit={{ opacity: 0, y: 6, filter: 'blur(6px)' }} transition={glide}>
+                  exit={{ opacity: 0, y: 6, filter: 'blur(6px)' }} transition={{ ...glide, ...unblur }}>
                   <span className="group-title">Agents</span>
                   <div className="cmd-list">
                     {AGENTS.map(a => (
@@ -611,7 +613,7 @@ export default function MainView({ data }) {
         <motion.header className="islands" variants={rise}>
           <div className="brand">
             <button className="icon-btn hamburger" onClick={() => setSidebarOpen(true)} aria-label="Open menu"><List size={20} weight="light" /></button>
-            <LiquidCore size={28} mark />
+            <Marshmallow size={28} mark />
             <span className="brand-name">ATLAS</span>
           </div>
           <div className="island-mode shell pill-shell">
@@ -638,11 +640,13 @@ export default function MainView({ data }) {
             <main className="stage">
               <motion.div className="stage-inner" variants={stagger}>
                 <div className="hero">
-                  <motion.div variants={{
-                    hidden: { opacity: 0, scale: 0.8, filter: 'blur(16px)' },
-                    show:   { opacity: 1, scale: 1,   filter: 'blur(0px)', transition: { type: 'spring', stiffness: 70, damping: 16 } },
+                  <motion.div className="nest-tray" variants={{
+                    hidden: { opacity: 0, scale: 0.9, y: 12, filter: 'blur(14px)' },
+                    show:   { opacity: 1, scale: 1,   y: 0,  filter: 'blur(0px)', transition: { type: 'spring', stiffness: 90, damping: 15, ...unblur } },
                   }}>
-                    <LiquidCore state={core} size={260} analyserRef={analyserRef} />
+                    <div className="nest" data-state={core}>
+                      <Marshmallow state={core} size={250} analyserRef={analyserRef} waveKey={bootKey} />
+                    </div>
                   </motion.div>
                   <motion.h1 className="greeting" variants={rise}>{greeting}</motion.h1>
                   <motion.div variants={rise}>
@@ -658,7 +662,7 @@ export default function MainView({ data }) {
                     <motion.section key={replyKey} className="console shell" aria-label={`Reply from ${replyFrom}`} {...settle}>
                       <div className="shell-core">
                         <div className="console-head">
-                          <LiquidCore size={20} mark />
+                          <Marshmallow size={22} mark />
                           <span className="console-from">{replyFrom}</span>
                           <button className="icon-btn sm" onClick={reset} aria-label="Dismiss reply"><X size={15} weight="light" /></button>
                         </div>

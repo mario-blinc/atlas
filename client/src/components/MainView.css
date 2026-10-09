@@ -175,8 +175,33 @@
 .stage-inner { width: 100%; max-width: 680px; margin: auto; }
 
 .hero { display: flex; flex-direction: column; align-items: center; text-align: center; }
+
+/* The nest: a dark notch-like capsule the character lives in, with a warm glow behind it */
+.nest-tray {
+  padding: 6px;
+  border-radius: 48px;
+  background: rgba(255, 255, 255, 0.022);
+  border: 1px solid var(--hair);
+}
+.nest {
+  --glow: 0.14;
+  width: min(360px, calc(100vw - 52px));
+  height: 200px;
+  display: grid;
+  place-items: center;
+  border-radius: 42px;
+  background:
+    radial-gradient(46% 62% at 50% 52%, rgba(255, 232, 210, var(--glow)), transparent 72%),
+    linear-gradient(180deg, #0c0d11, #08090c);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.06), inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 40px 80px -40px rgba(0, 0, 0, 0.9);
+  transition: --glow 0.6s var(--ease-fluid);
+}
+.nest[data-state='listening'] { --glow: 0.24; }
+.nest[data-state='thinking']  { --glow: 0.18; }
+.nest[data-state='speaking']  { --glow: 0.22; }
+@property --glow { syntax: '<number>'; inherits: true; initial-value: 0.14; }
 .greeting {
-  margin-top: 8px;
+  margin-top: 28px;
   font-size: clamp(30px, 3.2vw, 42px);
   font-weight: 500;
   line-height: 1.1;
